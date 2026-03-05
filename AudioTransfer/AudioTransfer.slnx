@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="AudioTransfer.CLI/AudioTransfer.CLI.csproj" />
+  <Project Path="AudioTransfer.Core/AudioTransfer.Core.csproj" />
+  <Project Path="AudioTransfer.GUI/AudioTransfer.GUI.csproj" />
+</Solution>

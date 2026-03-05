@@ -1,0 +1,60 @@
+# Common Build and Temp Folders
+bin/
+obj/
+build/
+x64/
+x86/
+/out/
+*.log
+*.tmp
+*.bak
+*.swp
+*.~
+.DS_Store
+
+# Visual Studio (AudioTransfer & VirtualMicDriver)
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.opensdf
+*.sdf
+*.cache
+*.ncb
+*.pidb
+*.vc.db
+*.VC.db
+/AudioTransfer/.vs/
+/VirtualMicDriver/.vs/
+
+# Android (AudioOverLAN)
+.gradle/
+/AudioOverLAN/.gradle/
+/AudioOverLAN/local.properties
+/AudioOverLAN/.idea/caches
+/AudioOverLAN/.idea/libraries
+/AudioOverLAN/.idea/modules.xml
+/AudioOverLAN/.idea/workspace.xml
+/AudioOverLAN/.idea/navEditor.xml
+/AudioOverLAN/.idea/assetWizardSettings.xml
+/AudioOverLAN/app/build/
+/AudioOverLAN/captures/
+.externalNativeBuild/
+.cxx/
+/AudioOverLAN/.cxx/
+/AudioOverLAN/.externalNativeBuild/
+
+# NuGet
+packages/
+*.nupkg
+
+# Rider / IntelliJ (if used)
+.idea/
+*.iml
+
+# User specific
+local.properties
+*.user
+.ipch/
+*.opendb
