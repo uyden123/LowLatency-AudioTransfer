@@ -1,0 +1,42 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=mscorlib">
+
+    <system:String x:Key="LblServerTabTitle">Máy chủ</system:String>
+    <system:String x:Key="LblServerTabDesc">Gửi âm thanh từ máy tính này sang thiết bị khác</system:String>
+    <system:String x:Key="LblSendAudio">Gửi âm thanh</system:String>
+    <system:String x:Key="LblSendAudioDesc">Truyền âm thanh đang phát trên máy tính này tới thiết bị khác</system:String>
+    <system:String x:Key="LblConnections">Kết nối</system:String>
+    <system:String x:Key="LblAudioDevice">Thiết bị âm thanh</system:String>
+    <system:String x:Key="LblAudioDeviceDesc">Chọn thiết bị âm thanh để truyền phát</system:String>
+    <system:String x:Key="LblDeviceName">Tên thiết bị</system:String>
+    <system:String x:Key="LblDeviceNameDesc">Tên hiển thị với các thiết bị khác</system:String>
+    <system:String x:Key="LblDarkTheme">Giao diện tối</system:String>
+    <system:String x:Key="LblTray">Thu nhỏ xuống khay hệ thống</system:String>
+    <system:String x:Key="LblTrayDesc">Ẩn cửa sổ xuống khay hệ thống khi thu nhỏ</system:String>
+    <system:String x:Key="LblLanguage">Ngôn ngữ</system:String>
+    <system:String x:Key="LblLanguageDesc">Chọn ngôn ngữ hiển thị</system:String>
+    <system:String x:Key="LblStartup">Khởi động cùng máy tính</system:String>
+    <system:String x:Key="LblAutoMute">Tắt tiếng hệ thống khi đang phát</system:String>
+    <system:String x:Key="LblAutoMuteDesc">Tự động tắt tiếng PC khi âm thanh đang được gửi đi</system:String>
+    <system:String x:Key="LblLogs">Nhật ký hệ thống</system:String>
+    <system:String x:Key="LblLogsDesc">Xem các sự kiện ứng dụng và thông tin gỡ lỗi</system:String>
+    <system:String x:Key="NavServerText">Máy chủ</system:String>
+    <system:String x:Key="NavPlayerText">Trình phát</system:String>
+    <system:String x:Key="NavSettingsText">Cài đặt</system:String>
+    <system:String x:Key="LblSelectAudioDevice">Chọn thiết bị âm thanh</system:String>
+    <system:String x:Key="LblSelectAudioDeviceDesc">Chọn đầu ra âm thanh bạn muốn ghi lại và truyền phát</system:String>
+    <system:String x:Key="ChkAutoConnect">Tự kết nối</system:String>
+
+    <!-- Icons (Segoe MDL2 Assets) -->
+    <system:String x:Key="IconServer">&#xEBC6;</system:String>
+    <system:String x:Key="IconPlayer">&#xE768;</system:String>
+    <system:String x:Key="IconSettings">&#xE713;</system:String>
+    <system:String x:Key="IconMic">&#xE720;</system:String>
+    <system:String x:Key="IconAudio">&#xE8D6;</system:String>
+    <system:String x:Key="IconDiscovery">&#xE83B;</system:String>
+    <system:String x:Key="IconBuffer">&#xE9E9;</system:String>
+    <system:String x:Key="IconLatency">&#xE81C;</system:String>
+    <system:String x:Key="IconMobile">&#xE8EA;</system:String>
+    <system:String x:Key="IconClose">&#xE711;</system:String>
+</ResourceDictionary>

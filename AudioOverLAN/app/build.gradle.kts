@@ -50,6 +50,12 @@ android {
     buildFeatures {
         prefab = true
     }
+
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("src/main/cpp/opus_lib/lib")
+        }
+    }
 }
 
 dependencies {
@@ -60,6 +66,7 @@ dependencies {
     implementation(libs.concentus)
     implementation("com.google.oboe:oboe:1.9.0")
     implementation("org.tensorflow:tensorflow-lite:2.16.1")
+    implementation("androidx.media:media:1.7.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

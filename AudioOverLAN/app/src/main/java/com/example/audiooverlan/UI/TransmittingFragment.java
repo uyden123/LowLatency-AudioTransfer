@@ -1,213 +1,212 @@
 package com.example.audiooverlan.UI;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.media.MediaRecorder;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.audiooverlan.services.AudioTransmitterService;
 import com.example.audiooverlan.R;
-import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.example.audiooverlan.services.AudioTransmitterService;
+import com.example.audiooverlan.utils.SettingsRepository;
+import com.example.audiooverlan.viewmodels.TransmitterState;
+import com.example.audiooverlan.viewmodels.TransmitterViewModel;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.slider.Slider;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 public class TransmittingFragment extends Fragment {
 
-    private TextView tvDeviceName;
-    private TextView tvMyIP;
-    private TextView tvTimer;
-    private TextView tvConnectionStatus;
-    private FloatingActionButton btnStopTransmitting;
-    
-    // Switches
+    private TextView tvHostAddress;
+    private TextView tvHostPort;
+    private ImageButton btnCopyAddress;
     private SwitchMaterial swVolumeBoost;
-    private SwitchMaterial swAppNoiseSuppression;
-    private SwitchMaterial swAAudio;
-    private SwitchMaterial swExclusive;
-    // AI AEC removed
-    
-    // Controls
-    private MaterialCardView cardMicMode;
-    private TextView tvMicModeValue;
+    private TextView tvBoostLevelValue;
+    private Slider sliderVolumeLevel;
+    private MaterialButtonToggleGroup toggleNS;
+    private TextView tvNsStrengthValue;
+    private Slider sliderNoiseLevel;
+    private TextView tvActiveCount;
+    private RecyclerView rvClients;
+    private TextView tvNoClients;
+    private MaterialButton btnStopBroadcast;
 
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    
-    private final Runnable updateUIThread = new Runnable() {
-        @Override
-        public void run() {
-            updateTimer();
-            updateConnectionStatus();
-            handler.postDelayed(this, 1000);
-        }
-    };
+    private ClientAdapter clientAdapter;
+    private TransmitterViewModel viewModel;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_transmitting, container, false);
 
-        tvDeviceName = view.findViewById(R.id.tvDeviceName);
-        tvMyIP = view.findViewById(R.id.tvMyIP);
-        tvTimer = view.findViewById(R.id.tvTimer);
-        tvConnectionStatus = view.findViewById(R.id.tvConnectionStatus);
-        btnStopTransmitting = view.findViewById(R.id.btnStopTransmitting);
-        
+        viewModel = new ViewModelProvider(this).get(TransmitterViewModel.class);
+
+        // Bindings
+        tvHostAddress = view.findViewById(R.id.tvHostAddress);
+        tvHostPort = view.findViewById(R.id.tvHostPort);
+        btnCopyAddress = view.findViewById(R.id.btnCopyAddress);
         swVolumeBoost = view.findViewById(R.id.swVolumeBoost);
-        swAppNoiseSuppression = view.findViewById(R.id.swAppNoiseSuppression);
-        swAAudio = view.findViewById(R.id.swAAudio);
-        swExclusive = view.findViewById(R.id.swExclusive);
-        // AI AEC removed
-        
-        cardMicMode = view.findViewById(R.id.cardMicMode);
-        tvMicModeValue = view.findViewById(R.id.tvMicModeValue);
+        tvBoostLevelValue = view.findViewById(R.id.tvBoostLevelValue);
+        sliderVolumeLevel = view.findViewById(R.id.sliderVolumeLevel);
+        toggleNS = view.findViewById(R.id.toggleNS);
+        tvNsStrengthValue = view.findViewById(R.id.tvNsStrengthValue);
+        sliderNoiseLevel = view.findViewById(R.id.sliderNoiseLevel);
+        tvActiveCount = view.findViewById(R.id.tvActiveCount);
+        rvClients = view.findViewById(R.id.rvClients);
+        tvNoClients = view.findViewById(R.id.tvNoClients);
+        btnStopBroadcast = view.findViewById(R.id.btnStopBroadcast);
 
-        // Set device name
-        tvDeviceName.setText(Build.MANUFACTURER + " " + Build.MODEL);
-
-        // Set IP
-        tvMyIP.setText(getLocalIpAddress());
-
-        // Stop button
-        btnStopTransmitting.setOnClickListener(v -> stopTransmitterService());
-
-        setupSwitches();
-        setupMicMode();
-
-        handler.post(updateUIThread);
+        // Setup
+        setupHostInfo();
+        setupControls();
+        setupClientList();
+        observeState();
 
         return view;
     }
 
-    private void setupSwitches() {
-        android.content.SharedPreferences prefs = requireContext().getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
+    private void setupHostInfo() {
+        String ip = getLocalIpAddress();
+        tvHostAddress.setText(ip);
+        tvHostPort.setText(":5003"); // Default port
 
-        // App Volume Boost
-        swVolumeBoost.setChecked(AudioTransmitterService.volumeGain > 1.0f);
-        swVolumeBoost.setOnCheckedChangeListener((bv, isChecked) -> {
-            AudioTransmitterService.volumeGain = isChecked ? 2.0f : 1.0f;
-            prefs.edit().putBoolean(AudioTransmitterService.KEY_VOLUME_BOOST, isChecked).apply();
+        btnCopyAddress.setOnClickListener(v -> {
+            ClipboardManager clipboard = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText("Host IP", ip + ":5003");
+            clipboard.setPrimaryClip(clip);
+            Toast.makeText(getContext(), "Address copied to clipboard", Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void setupControls() {
+        SettingsRepository repo = SettingsRepository.getInstance(requireContext());
+
+        // Volume Boost
+        swVolumeBoost.setChecked(AudioTransmitterService.appVolumeBoostEnabled);
+        swVolumeBoost.setOnCheckedChangeListener((v, isChecked) -> {
+            AudioTransmitterService.appVolumeBoostEnabled = isChecked;
+            float gain = isChecked ? AudioTransmitterService.appVolumeBoostLevel : 1.0f;
+            AudioTransmitterService service = AudioTransmitterService.getInstance();
+            if (service != null) service.updateVolumeGain(gain);
+            else AudioTransmitterService.volumeGain = gain;
+            repo.setTransVolumeBoost(isChecked);
         });
 
-        // App Noise Suppression (DeepFilterNet)
-        swAppNoiseSuppression.setChecked(AudioTransmitterService.appNoiseSuppressionEnabled);
-        swAppNoiseSuppression.setOnCheckedChangeListener((bv, isChecked) -> {
-            AudioTransmitterService.appNoiseSuppressionEnabled = isChecked;
-            prefs.edit().putBoolean(AudioTransmitterService.KEY_NOISE_SUPPRESSION, isChecked).apply();
+        sliderVolumeLevel.setValue(Math.min(Math.max(AudioTransmitterService.appVolumeBoostLevel, 1.1f), 5.0f));
+        tvBoostLevelValue.setText(String.format(Locale.getDefault(), "%.1fx", AudioTransmitterService.appVolumeBoostLevel));
+        sliderVolumeLevel.addOnChangeListener((slider, value, fromUser) -> {
+            tvBoostLevelValue.setText(String.format(Locale.getDefault(), "%.1fx", value));
+            if (fromUser) {
+                AudioTransmitterService.appVolumeBoostLevel = value;
+                repo.setTransVolumeBoostLevel(value);
+                
+                if (AudioTransmitterService.appVolumeBoostEnabled) {
+                    AudioTransmitterService service = AudioTransmitterService.getInstance();
+                    if (service != null) service.updateVolumeGain(value);
+                    else AudioTransmitterService.volumeGain = value;
+                }
+            }
         });
 
-        // AAudio
-        swAAudio.setChecked(AudioTransmitterService.useAAudio);
-        swAAudio.setOnCheckedChangeListener((bv, isChecked) -> {
-            AudioTransmitterService.useAAudio = isChecked;
-            prefs.edit().putBoolean(AudioTransmitterService.KEY_AAUDIO_ENABLED, isChecked).apply();
-            notifyServiceRestart();
+        // Noise Suppression
+        updateNSToggleUI(AudioTransmitterService.appNsMode);
+        toggleNS.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (isChecked) {
+                int mode = 0;
+                if (checkedId == R.id.btnNsRNNoise) mode = 1;
+                else if (checkedId == R.id.btnNsDeepFilter) mode = 2;
+                
+                if (mode != AudioTransmitterService.appNsMode) {
+                    AudioTransmitterService.appNsMode = mode;
+                    repo.setTransNsMode(mode);
+                }
+            }
         });
 
-        // Exclusive Mode
-        swExclusive.setChecked(AudioTransmitterService.isExclusiveMode);
-        swExclusive.setOnCheckedChangeListener((bv, isChecked) -> {
-            AudioTransmitterService.isExclusiveMode = isChecked;
-            prefs.edit().putBoolean(AudioTransmitterService.KEY_EXCLUSIVE_MODE, isChecked).apply();
-            // Restart if currently using AAudio
-            if (AudioTransmitterService.useAAudio) {
-                notifyServiceRestart();
+        sliderNoiseLevel.setValue(AudioTransmitterService.appNoiseSuppressionLevel);
+        tvNsStrengthValue.setText(String.format(Locale.getDefault(), "%.0fdB", AudioTransmitterService.appNoiseSuppressionLevel));
+        sliderNoiseLevel.addOnChangeListener((slider, value, fromUser) -> {
+            tvNsStrengthValue.setText(String.format(Locale.getDefault(), "%.0fdB", value));
+            if (fromUser) {
+                repo.setTransNsLevel(value);
+                AudioTransmitterService service = AudioTransmitterService.getInstance();
+                if (service != null) {
+                    service.updateNoiseSuppressionLevel(value);
+                } else {
+                    AudioTransmitterService.appNoiseSuppressionLevel = value;
+                }
+            }
+        });
+
+        btnStopBroadcast.setOnClickListener(v -> stopTransmitterService());
+    }
+
+    private void updateNSToggleUI(int mode) {
+        if (mode == 0) toggleNS.check(R.id.btnNsOff);
+        else if (mode == 1) toggleNS.check(R.id.btnNsRNNoise);
+        else if (mode == 2) toggleNS.check(R.id.btnNsDeepFilter);
+    }
+
+    private void setupClientList() {
+        rvClients.setLayoutManager(new LinearLayoutManager(getContext()));
+        clientAdapter = new ClientAdapter();
+        rvClients.setAdapter(clientAdapter);
+    }
+
+    private void observeState() {
+        viewModel.getTransmitterState().observe(getViewLifecycleOwner(), state -> {
+            if (state instanceof TransmitterState.Transmitting) {
+                TransmitterState.Transmitting t = (TransmitterState.Transmitting) state;
+                List<String> clients = new ArrayList<>();
+                if (t.isConnected) {
+                    clients.add(t.targetIp);
+                }
+                updateClientsUI(clients);
+            } else {
+                updateClientsUI(new ArrayList<>());
             }
         });
     }
 
-    private void setupMicMode() {
-        updateMicModeUI();
-        android.content.SharedPreferences prefs = requireContext().getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
-        
-        cardMicMode.setOnClickListener(v -> {
-            String[] modes = {"Voice communication", "General (Music/High Quality)"};
-            int checkedItem = (AudioTransmitterService.micSource == MediaRecorder.AudioSource.VOICE_COMMUNICATION) ? 0 : 1;
-            
-            new MaterialAlertDialogBuilder(requireContext())
-                    .setTitle("Select Microphone Mode")
-                    .setSingleChoiceItems(modes, checkedItem, (dialog, which) -> {
-                        int newSource = (which == 0) ? MediaRecorder.AudioSource.VOICE_COMMUNICATION : MediaRecorder.AudioSource.MIC;
-                        if (newSource != AudioTransmitterService.micSource) {
-                            AudioTransmitterService.micSource = newSource;
-                            prefs.edit().putInt(AudioTransmitterService.KEY_MIC_SOURCE, newSource).apply();
-                            updateMicModeUI();
-                            notifyServiceRestart();
-                            Toast.makeText(getContext(), "Restarting capture with new mode...", Toast.LENGTH_SHORT).show();
-                        }
-                        dialog.dismiss();
-                    })
-                    .show();
-        });
-    }
-
-    private void updateMicModeUI() {
-        if (AudioTransmitterService.micSource == MediaRecorder.AudioSource.VOICE_COMMUNICATION) {
-            tvMicModeValue.setText("Voice communication");
+    private void updateClientsUI(List<String> clients) {
+        if (clients.isEmpty()) {
+            tvNoClients.setVisibility(View.VISIBLE);
+            rvClients.setVisibility(View.GONE);
+            tvActiveCount.setText("0 ACTIVE");
         } else {
-            tvMicModeValue.setText("General (Default Mic)");
-        }
-    }
-
-    private void notifyServiceRestart() {
-        AudioTransmitterService service = AudioTransmitterService.getInstance();
-        if (service != null) {
-            service.restartCapture();
-        }
-    }
-
-    private void updateTimer() {
-        if (AudioTransmitterService.startTimeMillis == 0) return;
-        
-        long millis = System.currentTimeMillis() - AudioTransmitterService.startTimeMillis;
-        int seconds = (int) (millis / 1000);
-        int hours = seconds / 3600;
-        int minutes = (seconds % 3600) / 60;
-        seconds = seconds % 60;
-        
-        if (hours > 0) {
-            tvTimer.setText(String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds));
-        } else {
-            tvTimer.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
-        }
-    }
-
-    private void updateConnectionStatus() {
-        if (AudioTransmitterService.currentUdpSender != null && AudioTransmitterService.currentUdpSender.isConnected()) {
-            tvConnectionStatus.setText("Connected to PC");
-            tvConnectionStatus.setTextColor(getResources().getColor(R.color.primary_green));
-        } else {
-            tvConnectionStatus.setText("Waiting for PC... (Reconnecting)");
-            tvConnectionStatus.setTextColor(getResources().getColor(R.color.text_gray));
+            tvNoClients.setVisibility(View.GONE);
+            rvClients.setVisibility(View.VISIBLE);
+            tvActiveCount.setText(String.format(Locale.getDefault(), "%d ACTIVE", clients.size()));
+            clientAdapter.setClients(clients);
         }
     }
 
     private void stopTransmitterService() {
         AudioTransmitterService.isServiceRunning = false;
         Intent intent = new Intent(getContext(), AudioTransmitterService.class);
-        if (getContext() != null) {
-            getContext().stopService(intent);
-        }
-
-        if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).onTransmitterStateChanged();
-        }
+        if (getContext() != null) getContext().stopService(intent);
+        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).onTransmitterStateChanged();
     }
 
     private String getLocalIpAddress() {
@@ -222,9 +221,38 @@ public class TransmittingFragment extends Fragment {
         return "Unknown";
     }
 
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        handler.removeCallbacks(updateUIThread);
+    private static class ClientAdapter extends RecyclerView.Adapter<ClientAdapter.ViewHolder> {
+        private List<String> clients = new ArrayList<>();
+
+        public void setClients(List<String> clients) {
+            this.clients = clients;
+            notifyDataSetChanged();
+        }
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_connected_client, parent, false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            String ip = clients.get(position);
+            holder.tvIp.setText(ip);
+            holder.tvPing.setText("Connected"); // Mock ping for now
+        }
+
+        @Override
+        public int getItemCount() { return clients.size(); }
+
+        static class ViewHolder extends RecyclerView.ViewHolder {
+            TextView tvIp, tvPing;
+            ViewHolder(View v) {
+                super(v);
+                tvIp = v.findViewById(R.id.tvClientIp);
+                tvPing = v.findViewById(R.id.tvClientPing);
+            }
+        }
     }
 }

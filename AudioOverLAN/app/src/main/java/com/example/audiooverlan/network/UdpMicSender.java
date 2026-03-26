@@ -1,6 +1,7 @@
 package com.example.audiooverlan.network;
 
 import android.util.Log;
+import android.os.ConditionVariable;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -10,24 +11,16 @@ import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import org.json.JSONObject;
 
-/**
- * UDP sender for mic audio from Android to PC.
- * Sends Opus-encoded audio packets with the same format as PC→Android:
- *   [2B SeqNum BE] [1B Codec] [8B Timestamp LE] [8B WallClock LE] [N bytes Opus data]
- *   Total header: 19 bytes
- *
- * Also handles SUBSCRIBE/HEARTBEAT handshake with the PC receiver.
- */
 public class UdpMicSender {
-    private static final String TAG = "UdpMicSender";
+    private static final String TAG = "UdpMicBroadcaster";
 
-    private DatagramSocket socket;
-    private InetAddress serverAddr;
-    private String serverIp;
-    private int serverPort; // Dynamic target port (learned from client)
+    private volatile DatagramSocket socket;
     private final int listenPort;
 
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
@@ -37,76 +30,106 @@ public class UdpMicSender {
 
     private final AtomicLong packetsSent = new AtomicLong(0);
     private final AtomicLong bytesSent = new AtomicLong(0);
-    private final AtomicLong lastAckTime = new AtomicLong(0);
+    
+    // Support legacy reliable control messages if needed
+    private static final byte CODEC_CONTROL = (byte) 255;
+    private static final byte CODEC_ACK = (byte) 254;
+    private final ConcurrentHashMap<Integer, ConditionVariable> pendingAcks = new ConcurrentHashMap<>();
+    private int controlMessageId = 0;
 
     private int seqNum = 0;
     private long timestampSamples = 0;
-    private final int framesPerPacket; // samples per channel per 20ms packet
-    private final byte[] sendBuffer = new byte[1500]; // MTU size
-    private final ByteBuffer headerWriters = ByteBuffer.wrap(sendBuffer);
+    private final int framesPerPacket;
+
+    private final byte[] audioSendBuffer = new byte[1500];
+    private final ByteBuffer audioHeaderWriter = ByteBuffer.wrap(audioSendBuffer);
     private DatagramPacket audioPacket;
+
+    private final MicClientConnectionManager connectionManager;
 
     public interface OnConnectionStateListener {
         void onConnected();
         void onDisconnected();
     }
-
     private OnConnectionStateListener connectionListener;
 
-    /**
-     * @param serverIp   PC IP address (can be null for discovery mode)
-     * @param serverPort PC UDP port (e.g. 5003)
-     * @param sampleRate Audio sample rate (48000)
-     * @param packetDurationMs Packet duration (20)
-     */
-    public UdpMicSender(String serverIp, int serverPort, int sampleRate, int packetDurationMs) {
-        this.serverIp = serverIp;
-        this.serverPort = serverPort;
-        this.listenPort = serverPort; // Listen on the same port we send to (logical)
+    public UdpMicSender(int listenPort, int sampleRate, int packetDurationMs) {
+        this.listenPort = listenPort;
         this.framesPerPacket = sampleRate * packetDurationMs / 1000;
-        this.headerWriters.order(ByteOrder.LITTLE_ENDIAN);
+        this.audioHeaderWriter.order(ByteOrder.LITTLE_ENDIAN);
+        
+        this.connectionManager = new MicClientConnectionManager((data, address, port) -> {
+            DatagramSocket currentSocket = socket;
+            if (currentSocket != null && !currentSocket.isClosed()) {
+                try {
+                    DatagramPacket packet = new DatagramPacket(data, data.length, address, port);
+                    currentSocket.send(packet);
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed sending packet", e);
+                }
+            }
+        });
+    }
+
+    // Constructor matching old signature, uses serverIp to proactively initiate connection
+    public UdpMicSender(String serverIp, int serverPort, int sampleRate, int packetDurationMs) {
+        this(serverPort, sampleRate, packetDurationMs);
+        if (serverIp != null && !serverIp.isEmpty()) {
+            try {
+                InetAddress target = InetAddress.getByName(serverIp);
+                this.connectionManager.forceAddClient(target, serverPort);
+                Log.i(TAG, "Proactively broadcasting to explicitly set PC: " + serverIp);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to resolve initial target IP", e);
+            }
+        }
     }
 
     public void setConnectionListener(OnConnectionStateListener listener) {
         this.connectionListener = listener;
     }
 
-    public void start() throws IOException {
-        if (isRunning.get()) return;
+    private synchronized boolean reconnectSocket() {
+        try {
+            if (socket != null && !socket.isClosed()) {
+                socket.close();
+            }
+            socket = new DatagramSocket(listenPort);
+            socket.setSoTimeout(1000); // For receiveThread
+            Log.i(TAG, "Socket bound to port " + listenPort);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Socket creation failed", e);
+            return false;
+        }
+    }
 
-        socket = new DatagramSocket(listenPort);
-        socket.setSoTimeout(2000);
-        isRunning.set(true);
+    public void start() throws IOException {
+        if (!isRunning.compareAndSet(false, true)) return;
+
+        if (!reconnectSocket()) {
+            isRunning.set(false);
+            return;
+        }
+        
         seqNum = 0;
         timestampSamples = 0;
+        audioPacket = new DatagramPacket(audioSendBuffer, audioSendBuffer.length);
 
-        if (serverIp != null && !serverIp.isEmpty()) {
-            serverAddr = InetAddress.getByName(serverIp);
-            Log.i(TAG, "Starting UDP mic sender to " + serverIp + ":" + serverPort);
-            
-            // Initialize the pre-allocated audio packet once we have the address
-            audioPacket = new DatagramPacket(sendBuffer, sendBuffer.length, serverAddr, serverPort);
-            
-            // Send initial SUBSCRIBE
-            sendControlText("SUBSCRIBE");
-        } else {
-            Log.i(TAG, "Starting UDP mic sender in passive mode, waiting for discovery...");
-        }
-
-        // Heartbeat / Reconnection thread
-        final boolean isPassiveMode = (serverIp == null || serverIp.isEmpty());
         heartbeatThread = new Thread(() -> {
             while (isRunning.get()) {
                 try {
                     Thread.sleep(2000);
-                    if (serverAddr != null && isConnected.get()) {
-                        // Only send heartbeats if we are connected.
-                        // If we are in passive mode, we never initiate SUBSCRIBE.
-                        sendControlText("HEARTBEAT");
-                    } else if (serverAddr != null && !isPassiveMode) {
-                        // Only proactive subscribe if we weren't started in passive mode
-                        Log.i(TAG, "Attempting to re-subscribe to PC...");
-                        sendControlText("SUBSCRIBE");
+                    connectionManager.cleanup();
+                    List<UdpClientSession> clients = connectionManager.getAuthenticatedClients();
+                    
+                    boolean hasClients = !clients.isEmpty();
+                    if (hasClients && !isConnected.get()) {
+                        isConnected.set(true);
+                        if (connectionListener != null) connectionListener.onConnected();
+                    } else if (!hasClients && isConnected.get()) {
+                        isConnected.set(false);
+                        if (connectionListener != null) connectionListener.onDisconnected();
                     }
                 } catch (InterruptedException e) {
                     break;
@@ -117,184 +140,123 @@ public class UdpMicSender {
         }, "UdpMicHeartbeat");
         heartbeatThread.start();
 
-        // Receive thread for ACKs and discovery
         receiveThread = new Thread(() -> {
             byte[] buf = new byte[1024];
             DatagramPacket pkt = new DatagramPacket(buf, buf.length);
             while (isRunning.get()) {
+                DatagramSocket currentSocket = this.socket;
+                if (currentSocket == null || currentSocket.isClosed()) {
+                    try { Thread.sleep(100); } catch (Exception ignored) {}
+                    continue;
+                }
                 try {
-                    socket.receive(pkt);
-                    String msg = new String(buf, 0, pkt.getLength(), StandardCharsets.UTF_8).trim();
-                    lastAckTime.set(System.currentTimeMillis());
+                    pkt.setLength(buf.length);
+                    currentSocket.receive(pkt);
+                    int length = pkt.getLength();
 
-                    if (msg.equalsIgnoreCase("SUBSCRIBE")) {
-                        // We are acting as Server - Respond with SUBSCRIBE_ACK
-                        Log.i(TAG, "Received SUBSCRIBE from: " + pkt.getAddress());
-                        sendControlTextTo("SUBSCRIBE_ACK", pkt.getAddress(), pkt.getPort());
-                        
-                        // Learning behavior: Always learn/update PC address AND PORT if we receive a subscribe
-                        if (serverAddr == null || !serverAddr.equals(pkt.getAddress()) || serverPort != pkt.getPort()) {
-                            serverAddr = pkt.getAddress();
-                            serverIp = serverAddr.getHostAddress();
-                            serverPort = pkt.getPort();
-                            Log.i(TAG, "Learned/Updated target to: " + serverIp + ":" + serverPort);
-                            audioPacket = new DatagramPacket(sendBuffer, sendBuffer.length, serverAddr, serverPort);
-                        }
-
-                        if (!isConnected.get()) {
-                            isConnected.set(true);
-                            if (connectionListener != null) connectionListener.onConnected();
-                        }
-                    } else if (msg.equalsIgnoreCase("SUBSCRIBE_ACK")) {
-                        // We are acting as Client - Server acknowledged our subscription
-                        if (!isConnected.get()) {
-                            isConnected.set(true);
-                            Log.i(TAG, "Connected to PC (SUBSCRIBE_ACK received)");
-                            if (connectionListener != null) connectionListener.onConnected();
-                        }
-                    } else if (msg.equalsIgnoreCase("HEARTBEAT")) {
-                        // Respond with HEARTBEAT_ACK
-                        Log.i(TAG, "Received HEARTBEAT from: " + pkt.getAddress());
-                        sendControlTextTo("HEARTBEAT_ACK", pkt.getAddress(), pkt.getPort());
-                        
-                        // Also learn/update target if we don't have one or if it changed
-                        if (serverAddr == null || !serverAddr.equals(pkt.getAddress()) || serverPort != pkt.getPort()) {
-                            serverAddr = pkt.getAddress();
-                            serverIp = serverAddr.getHostAddress();
-                            serverPort = pkt.getPort();
-                            Log.i(TAG, "Learned/Updated target from HEARTBEAT: " + serverIp + ":" + serverPort);
-                            audioPacket = new DatagramPacket(sendBuffer, sendBuffer.length, serverAddr, serverPort);
-                        }
-
-                        if (!isConnected.get()) {
-                            isConnected.set(true);
-                            if (connectionListener != null) connectionListener.onConnected();
-                        }
-                    } else if (msg.equalsIgnoreCase("HEARTBEAT_ACK")) {
-                        // Server acknowledged our heartbeat
-                        if (!isConnected.get()) {
-                            isConnected.set(true);
-                            if (connectionListener != null) connectionListener.onConnected();
+                    boolean handled = connectionManager.processUdpPacket(buf, length, pkt.getAddress(), pkt.getPort());
+                    
+                    if (!handled && length >= 19) {
+                        int codec = buf[2] & 0xFF;
+                        if (codec == 254) { // ACK
+                            if (length >= 23) {
+                                int msgId = ByteBuffer.wrap(buf, 19, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
+                                ConditionVariable cv = pendingAcks.remove(msgId);
+                                if (cv != null) cv.open();
+                            }
+                        } else if (codec == 255) { // CONTROL
+                            if (length >= 23) {
+                                int msgId = ByteBuffer.wrap(buf, 19, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
+                                String json = new String(buf, 23, length - 23, StandardCharsets.UTF_8).trim();
+                                sendBinaryAck(msgId, pkt.getAddress(), pkt.getPort());
+                                processIncomingControl(json);
+                            }
                         }
                     }
-                } catch (SocketTimeoutException e) {
-                    // Check if we lost connection based on last received packet (ACK or anything)
-                    if (isConnected.get() && lastAckTime.get() > 0) {
-                        long elapsed = System.currentTimeMillis() - lastAckTime.get();
-                        if (elapsed > 5000) { // 5s timeout
-                            isConnected.set(false);
-                            Log.w(TAG, "PC connection timeout (no HEARTBEAT_ACK/data for 5s)");
-                            if (connectionListener != null) connectionListener.onDisconnected();
-                        }
-                    }
+                } catch (SocketTimeoutException ignored) {
                 } catch (Exception e) {
-                    if (isRunning.get()) Log.e(TAG, "Receive error", e);
+                    if (isRunning.get()) {
+                        Log.e(TAG, "Receive error", e);
+                        try { Thread.sleep(500); } catch (Exception ignored) {}
+                    }
                 }
             }
-        }, "UdpMicReceiveAndDiscover");
+        }, "UdpMicReceive");
         receiveThread.start();
     }
 
-    /**
-     * Send an Opus-encoded audio packet.
-     * Thread-safe - can be called from the recording thread.
-     *
-     * @param opusData Opus encoded data
-     * @param length   Length of valid data
-     */
     public void sendAudioPacket(byte[] opusData, int length) {
-        if (!isRunning.get() || socket == null || serverAddr == null || audioPacket == null) return;
+        DatagramSocket currentSocket = socket;
+        if (!isRunning.get() || currentSocket == null || currentSocket.isClosed() || audioPacket == null) return;
+        
+        List<UdpClientSession> activeClients = connectionManager.getAuthenticatedClients();
+        if (activeClients.isEmpty()) return;
 
         try {
-            // Header: [2B SeqNum BE] [1B Codec] [8B Timestamp LE] [8B WallClock LE]
-            
-            // SeqNum (2 bytes BE)
-            sendBuffer[0] = (byte) ((seqNum >> 8) & 0xFF);
-            sendBuffer[1] = (byte) (seqNum & 0xFF);
-
-            // Codec (1 byte) = 1 for Opus
-            sendBuffer[2] = 1;
-
-            // Timestamp (8 bytes LE) - using ByteBuffer wrap for speed
-            headerWriters.putLong(3, timestampSamples);
-            
-            // WallClock (8 bytes LE)
-            headerWriters.putLong(11, System.currentTimeMillis());
-
-            // Audio data - Copy Opus data into the pre-allocated sendBuffer
-            System.arraycopy(opusData, 0, sendBuffer, 19, length);
-
-            // Update packet length and send
+            audioSendBuffer[0] = (byte) ((seqNum >> 8) & 0xFF);
+            audioSendBuffer[1] = (byte) (seqNum & 0xFF);
+            audioSendBuffer[2] = 1; // CODEC_AUDIO
+            audioHeaderWriter.putLong(3, timestampSamples);
+            audioHeaderWriter.putLong(11, System.currentTimeMillis());
+            System.arraycopy(opusData, 0, audioSendBuffer, 19, length);
             audioPacket.setLength(19 + length);
-            socket.send(audioPacket);
-
-            seqNum = (short) ((seqNum + 1) & 0xFFFF);
+            
+            for (UdpClientSession client : activeClients) {
+                try {
+                    audioPacket.setAddress(client.getAddress());
+                    audioPacket.setPort(client.getPort());
+                    currentSocket.send(audioPacket);
+                } catch (Exception ignored) {}
+            }
+            
+            seqNum = (seqNum + 1) & 0xFFFF;
             timestampSamples += framesPerPacket;
-
             packetsSent.incrementAndGet();
             bytesSent.addAndGet(length);
-
         } catch (Exception e) {
             if (isRunning.get()) Log.e(TAG, "Send error", e);
         }
     }
 
-    /**
-     * Send a control text message (SUBSCRIBE, HEARTBEAT, etc.) to the configured server.
-     */
-    private void sendControlText(String message) {
-        if (serverAddr == null) return;
-        sendControlTextTo(message, serverAddr, serverPort);
+    private void processIncomingControl(String json) {
+        try {
+            JSONObject obj = new JSONObject(json);
+            String cmd = obj.optString("command");
+            Log.i(TAG, "Incoming command: " + cmd);
+        } catch (Exception e) {
+            Log.e(TAG, "JSON parse error", e);
+        }
     }
 
-    /**
-     * Send a control text message to a specific address/port.
-     */
-    private void sendControlTextTo(String message, InetAddress address, int port) {
-        if (socket == null || socket.isClosed()) return;
+    private void sendBinaryAck(int msgId, InetAddress address, int port) {
+        DatagramSocket currentSocket = this.socket;
+        if (currentSocket == null || currentSocket.isClosed()) return;
         try {
-            byte[] msg = message.getBytes(StandardCharsets.UTF_8);
-            DatagramPacket packet = new DatagramPacket(msg, msg.length, address, port);
-            socket.send(packet);
+            byte[] data = new byte[23];
+            data[2] = CODEC_ACK;
+            ByteBuffer.wrap(data, 19, 4).order(ByteOrder.LITTLE_ENDIAN).putInt(msgId);
+            DatagramPacket pkt = new DatagramPacket(data, data.length, address, port);
+            currentSocket.send(pkt);
         } catch (Exception e) {
-            Log.e(TAG, "Failed to send " + message + " to " + address.getHostAddress(), e);
+            Log.e(TAG, "Send ACK error", e);
         }
     }
 
     public void stop() {
         if (!isRunning.getAndSet(false)) return;
 
-        Log.i(TAG, "Stopping UDP mic sender...");
-
-        // Send disconnect
-        try {
-            sendControlText("UNSUBSCRIBE");
-        } catch (Exception ignored) {}
-
         if (receiveThread != null) receiveThread.interrupt();
         if (heartbeatThread != null) heartbeatThread.interrupt();
-
-        if (socket != null && !socket.isClosed()) {
-            socket.close();
-        }
-
+        
+        if (socket != null && !socket.isClosed()) socket.close();
+        
+        try { if (receiveThread != null) receiveThread.join(1000); } catch (InterruptedException ignored) {}
+        try { if (heartbeatThread != null) heartbeatThread.join(1000); } catch (InterruptedException ignored) {}
         isConnected.set(false);
-        Log.i(TAG, "UDP mic sender stopped.");
     }
 
-    public boolean isConnected() {
-        return isConnected.get();
-    }
-
-    public boolean isRunning() {
-        return isRunning.get();
-    }
-
-    public long getPacketsSent() {
-        return packetsSent.get();
-    }
-
-    public long getBytesSent() {
-        return bytesSent.get();
-    }
+    public boolean isConnected() { return isConnected.get(); }
+    public boolean isRunning() { return isRunning.get(); }
+    public long getPacketsSent() { return packetsSent.get(); }
+    public long getBytesSent() { return bytesSent.get(); }
 }

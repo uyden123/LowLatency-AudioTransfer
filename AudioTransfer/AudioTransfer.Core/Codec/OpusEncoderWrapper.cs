@@ -16,7 +16,7 @@ namespace AudioTransfer.Core.Codec
         private readonly int _sampleRate = 48000; // Opus always uses 48kHz internally
         private readonly int _channels;
         private readonly int _frameSamples; // samples per channel per frame (e.g. 960 for 20ms @ 48kHz)
-        private readonly int _frameMilliseconds;
+        private readonly double _frameMilliseconds;
         private readonly int _maxPacketBytes = 4000; // Max Opus packet size
         
         // Statistics
@@ -45,7 +45,7 @@ namespace AudioTransfer.Core.Codec
         public OpusEncoderWrapper(
             int channels, 
             int bitrate = 128000, 
-            int frameMilliseconds = 20,
+            double frameMilliseconds = 20,
             int complexity = 10,
             bool enableFEC = true,
             bool enableDTX = false)
@@ -59,10 +59,10 @@ namespace AudioTransfer.Core.Codec
 
             _channels = channels;
             _frameMilliseconds = frameMilliseconds;
-            _frameSamples = _sampleRate * frameMilliseconds / 1000;
+            _frameSamples = (int)(_sampleRate * frameMilliseconds / 1000.0);
 
-            // Create encoder
-            _encoder = new OpusEncoder(_sampleRate, _channels, OpusApplication.OPUS_APPLICATION_AUDIO);
+            // Create encoder with VOIP application which enables FEC (RESTRICTED_LOWDELAY does not support FEC well)
+            _encoder = new OpusEncoder(_sampleRate, _channels, OpusApplication.OPUS_APPLICATION_VOIP);
             
             // Configure encoder settings
             try
@@ -86,13 +86,55 @@ namespace AudioTransfer.Core.Codec
         }
 
         /// <summary>
+        /// Encode exactly one frame of interleaved 16-bit PCM into the provided output buffer.
+        /// Zero-allocation hot path: caller supplies the output buffer.
+        /// </summary>
+        /// <param name="interleavedPcm">Interleaved 16-bit PCM samples (must contain at least _frameSamples*channels samples starting at offset)</param>
+        /// <param name="pcmOffset">Sample offset into interleavedPcm</param>
+        /// <param name="outBuffer">Pre-allocated output buffer (at least _maxPacketBytes bytes)</param>
+        /// <returns>Number of bytes written to outBuffer, or 0 on failure</returns>
+        public int EncodeTo(short[] interleavedPcm, int pcmOffset, byte[] outBuffer)
+        {
+            if (interleavedPcm == null || outBuffer == null) return 0;
+            int samplesPerFrameInterleaved = _frameSamples * _channels;
+            if (pcmOffset + samplesPerFrameInterleaved > interleavedPcm.Length) return 0;
+
+            try
+            {
+                int encoded = _encoder.Encode(
+                    interleavedPcm,
+                    pcmOffset,
+                    _frameSamples,
+                    outBuffer,
+                    0,
+                    outBuffer.Length
+                );
+                if (encoded > 0)
+                {
+                    _totalFramesEncoded++;
+                    _totalBytesEncoded += encoded;
+                    return encoded;
+                }
+                if (encoded < 0)
+                {
+                    AudioTransfer.Core.Logging.CoreLogger.Instance.Log($"[OpusEncoder] Encode error: {encoded}");
+                }
+            }
+            catch (Exception ex)
+            {
+                AudioTransfer.Core.Logging.CoreLogger.Instance.Log($"[OpusEncoder] Exception during encoding: {ex.Message}");
+            }
+            return 0;
+        }
+
+        /// <summary>
         /// Encode interleaved 16-bit PCM samples into Opus frames.
         /// Returns a sequence of encoded Opus packets (byte arrays).
         /// Only complete frames are encoded; partial frames are ignored.
         /// </summary>
         /// <param name="interleavedPcm">Interleaved 16-bit PCM samples</param>
         /// <returns>Enumerable of encoded Opus packets</returns>
-        [Obsolete]
+        [Obsolete("Use EncodeTo(short[], int, byte[]) for zero-allocation encoding in hot paths.")]
         public IEnumerable<byte[]> Encode(short[] interleavedPcm)
         {
             if (interleavedPcm == null || interleavedPcm.Length == 0)
@@ -101,43 +143,14 @@ namespace AudioTransfer.Core.Codec
             int samplesPerFrameInterleaved = _frameSamples * _channels;
             var tmp = new byte[_maxPacketBytes];
 
-            for (int offset = 0; offset + samplesPerFrameInterleaved <= interleavedPcm.Length; 
+            for (int offset = 0; offset + samplesPerFrameInterleaved <= interleavedPcm.Length;
                  offset += samplesPerFrameInterleaved)
             {
-                int encoded = 0;
-                bool encodeSuccess = false;
-                try
+                int encoded = EncodeTo(interleavedPcm, offset, tmp);
+                if (encoded > 0)
                 {
-                    // Encode one frame
-                    encoded = _encoder.Encode(
-                        interleavedPcm, 
-                        offset, 
-                        _frameSamples, 
-                        tmp, 
-                        0, 
-                        tmp.Length
-                    );
-                    encodeSuccess = encoded > 0;
-                    if (encoded < 0)
-                    {
-                        AudioTransfer.Core.Logging.CoreLogger.Instance.Log($"[OpusEncoder] Encode error: {encoded}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    AudioTransfer.Core.Logging.CoreLogger.Instance.Log($"[OpusEncoder] Exception during encoding: {ex.Message}");
-                }
-
-                if (encodeSuccess)
-                {
-                    // Copy to output buffer
                     var outb = new byte[encoded];
                     Buffer.BlockCopy(tmp, 0, outb, 0, encoded);
-
-                    // Update statistics
-                    _totalFramesEncoded++;
-                    _totalBytesEncoded += encoded;
-
                     yield return outb;
                 }
             }
@@ -177,11 +190,10 @@ namespace AudioTransfer.Core.Codec
             }
         }
 
-        private static bool IsValidFrameSize(int ms)
+        private static bool IsValidFrameSize(double ms)
         {
             // Opus supports: 2.5, 5, 10, 20, 40, 60 ms
-            return ms == 20 || ms == 10 || ms == 40 || ms == 60 || ms == 5;
-            // Note: 2.5ms requires special handling, omitted for simplicity
+            return ms == 2.5 || ms == 5 || ms == 10 || ms == 20 || ms == 40 || ms == 60;
         }
 
         public void Dispose()

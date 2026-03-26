@@ -8,16 +8,6 @@ using AudioTransfer.Core.Logging;
 
 namespace AudioTransfer.Core.Network
 {
-    /// <summary>
-    /// UDP receiver for Android mic audio.
-    /// Listens on a port, receives Opus-encoded audio packets from Android,
-    /// and feeds them into a MicJitterBuffer.
-    /// 
-    /// Packet format (same as PC→Android):
-    ///   [2B SeqNum BE] [1B Codec] [8B Timestamp LE] [8B WallClock LE] [N bytes Opus data]
-    ///   Header: 19 bytes total
-    ///   Codec: 1 = Opus, 255 = Control message
-    /// </summary>
     public sealed class UdpMicReceiver : IDisposable
     {
         private UdpClient? _udpClient;
@@ -29,15 +19,27 @@ namespace AudioTransfer.Core.Network
         private readonly int _listenPort;
         private readonly MicJitterBuffer _jitterBuffer;
 
-        // Connected Android endpoint
         private IPEndPoint? _androidEp;
-        private IPEndPoint? _targetEp; // Fixed target if provided
+        private IPEndPoint? _targetEp;
         private DateTime _lastPacketTime;
         private readonly object _epLock = new();
 
-        // Statistics
         private long _packetsReceived;
         private long _bytesReceived;
+
+        private const byte CODEC_AUDIO = 1;
+        private const byte CODEC_SYN = 250;
+        private const byte CODEC_SYN_ACK = 251;
+        private const byte CODEC_ACK_HANDSHAKE = 252;
+        private const byte CODEC_ACK = 254;
+        private const byte CODEC_CONTROL = 255;
+
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<int, TaskCompletionSource<bool>> _pendingAcks = new();
+        private int _controlMessageId;
+
+        // Handshake state
+        private enum HandshakeState { Disconnected, SynSent, Authenticated }
+        private volatile HandshakeState _state = HandshakeState.Disconnected;
 
         public event EventHandler<string>? OnControlMessage;
         public event EventHandler? OnAndroidConnected;
@@ -50,7 +52,7 @@ namespace AudioTransfer.Core.Network
                 lock (_epLock)
                 {
                     if (_androidEp == null) return false;
-                    return (DateTime.UtcNow - _lastPacketTime).TotalSeconds < 5;
+                    return (DateTime.UtcNow - _lastPacketTime).TotalSeconds < 5 && _state == HandshakeState.Authenticated;
                 }
             }
         }
@@ -122,151 +124,103 @@ namespace AudioTransfer.Core.Network
 
                     IPEndPoint remoteIpEp = (IPEndPoint)remoteEp;
 
-                    // Track last packet time for connection detection
                     lock (_epLock)
                     {
-                        _lastPacketTime = DateTime.UtcNow;
-                        if (_androidEp == null)
+                        // Fallback logic for discovering endpoints implicitly if no target provided
+                        if (_androidEp == null && _targetEp == null && length > 3 && _receiveBuffer[2] == CODEC_AUDIO)
                         {
                             _androidEp = remoteIpEp;
+                            _state = HandshakeState.Authenticated;
+                            _lastPacketTime = DateTime.UtcNow;
                             _jitterBuffer.Clear();
-                            CoreLogger.Instance.Log($"[UdpMicReceiver] Android connected: {remoteIpEp}");
+                            CoreLogger.Instance.Log($"[UdpMicReceiver] Android connected implicitly: {remoteIpEp}");
                             OnAndroidConnected?.Invoke(this, EventArgs.Empty);
+                        }
+
+                        if (_androidEp != null && _androidEp.Equals(remoteIpEp))
+                        {
+                            _lastPacketTime = DateTime.UtcNow;
                         }
                     }
 
-                    // Check for control messages (text-only packets)
-                    if (length < 19)
+                    if (length < 3) continue;
+
+                    int codec = _receiveBuffer[2];
+
+                    if (codec == CODEC_SYN_ACK)
                     {
-                        // Could be SUBSCRIBE, HEARTBEAT, etc.
-                        string msg = Encoding.UTF8.GetString(_receiveBuffer, 0, length).Trim();
-                        HandleControlText(msg, remoteIpEp);
+                        lock (_epLock)
+                        {
+                            if (_state == HandshakeState.SynSent)
+                            {
+                                _state = HandshakeState.Authenticated;
+                                _androidEp = remoteIpEp;
+                                _lastPacketTime = DateTime.UtcNow;
+                                _jitterBuffer.Clear();
+                                CoreLogger.Instance.Log($"[UdpMicReceiver] Handshake Complete! Connected to: {remoteIpEp}");
+                                OnAndroidConnected?.Invoke(this, EventArgs.Empty);
+                            }
+                        }
+                        SendBinaryHandshake(CODEC_ACK_HANDSHAKE, remoteIpEp);
                         continue;
                     }
 
-                    // Parse packet header
+                    if (length < 19) continue;
+
                     int seqNum = (_receiveBuffer[0] << 8) | _receiveBuffer[1];
-                    int codec = _receiveBuffer[2];
-
-                    // Timestamp (8 bytes LE)
                     long timestamp = BitConverter.ToInt64(_receiveBuffer, 3);
-
-                    // WallClock (8 bytes LE)
                     long wallClock = BitConverter.ToInt64(_receiveBuffer, 11);
-
                     int audioLength = length - 19;
+
                     if (audioLength < 0) continue;
 
                     Interlocked.Increment(ref _packetsReceived);
                     Interlocked.Add(ref _bytesReceived, audioLength);
 
-                    // Handle control codec
-                    if (codec == 255)
+                    if (codec == CODEC_ACK)
                     {
-                        string controlMsg = Encoding.UTF8.GetString(_receiveBuffer, 19, audioLength).Trim();
-                        CoreLogger.Instance.Log($"[UdpMicReceiver] Control: {controlMsg}");
-                        OnControlMessage?.Invoke(this, controlMsg);
-
-                        if (controlMsg == "SERVER_SHUTDOWN")
+                        if (length >= 23)
                         {
-                            lock (_epLock)
-                            {
-                                _androidEp = null;
-                            }
-                            OnAndroidDisconnected?.Invoke(this, EventArgs.Empty);
+                            int msgId = BitConverter.ToInt32(_receiveBuffer, 19);
+                            if (_pendingAcks.TryRemove(msgId, out var tcs))
+                                tcs.TrySetResult(true);
                         }
                         continue;
                     }
 
-                    // Feed into jitter buffer (Zero-allocation)
-                    _jitterBuffer.Add(seqNum, timestamp, wallClock, _receiveBuffer, 19, audioLength);
+                    if (codec == CODEC_CONTROL)
+                    {
+                        if (length >= 23)
+                        {
+                            int msgId = BitConverter.ToInt32(_receiveBuffer, 19);
+                            string json = Encoding.UTF8.GetString(_receiveBuffer, 23, length - 23).Trim();
+                            
+                            SendUdpRawAck(msgId, remoteIpEp);
+                            CoreLogger.Instance.Log($"[UdpMicReceiver] Control ID {msgId}: {json}");
+                            OnControlMessage?.Invoke(this, json);
+
+                            if (json == "SERVER_SHUTDOWN")
+                            {
+                                lock (_epLock) { _androidEp = null; _state = HandshakeState.Disconnected; }
+                                OnAndroidDisconnected?.Invoke(this, EventArgs.Empty);
+                            }
+                        }
+                        continue;
+                    }
+
+                    if (codec == CODEC_AUDIO && _state == HandshakeState.Authenticated)
+                    {
+                        _jitterBuffer.Add(seqNum, timestamp, wallClock, _receiveBuffer, 19, audioLength);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                if (_isRunning)
-                    CoreLogger.Instance.LogError("[UdpMicReceiver] Receive error", ex);
+                if (_isRunning) CoreLogger.Instance.LogError("[UdpMicReceiver] Receive error", ex);
             }
             finally
             {
                 CoreLogger.Instance.Log("[UdpMicReceiver] Receive loop ended.");
-            }
-        }
-
-        private void HandleControlText(string msg, IPEndPoint remoteEp)
-        {
-            if (string.Equals(msg, "SUBSCRIBE", StringComparison.OrdinalIgnoreCase))
-            {
-                lock (_epLock)
-                {
-                    _androidEp = remoteEp;
-                    _lastPacketTime = DateTime.UtcNow;
-                }
-
-                _jitterBuffer.Clear();
-                OnAndroidConnected?.Invoke(this, EventArgs.Empty);
-
-                // Send ACK
-                try
-                {
-                    byte[] ack = Encoding.UTF8.GetBytes("SUBSCRIBE_ACK");
-                    _udpClient!.Send(ack, ack.Length, remoteEp);
-                    CoreLogger.Instance.Log($"[UdpMicReceiver] Android subscribed: {remoteEp}");
-                }
-                catch { }
-            }
-            else if (string.Equals(msg, "HEARTBEAT", StringComparison.OrdinalIgnoreCase))
-            {
-                try
-                {
-                    byte[] ack = Encoding.UTF8.GetBytes("HEARTBEAT_ACK");
-                    _udpClient!.Send(ack, ack.Length, remoteEp);
-                    
-                    // Also ensure we recognize it if we haven't yet
-                    lock (_epLock)
-                    {
-                        if (_androidEp == null)
-                        {
-                            _androidEp = remoteEp;
-                            _jitterBuffer.Clear();
-                            OnAndroidConnected?.Invoke(this, EventArgs.Empty);
-                        }
-                    }
-                }
-                catch { }
-            }
-            else if (string.Equals(msg, "SUBSCRIBE_ACK", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(msg, "HEARTBEAT_ACK", StringComparison.OrdinalIgnoreCase))
-            {
-                // Clear jitter buffer on SUBSCRIBE_ACK as it indicates a new session start
-                if (msg.Equals("SUBSCRIBE_ACK", StringComparison.OrdinalIgnoreCase))
-                {
-                    _jitterBuffer.Clear();
-                }
-
-                lock (_epLock)
-                {
-                    _lastPacketTime = DateTime.UtcNow;
-                    if (_androidEp == null || !_androidEp.Equals(remoteEp))
-                    {
-                        _androidEp = remoteEp;
-                        _jitterBuffer.Clear();
-                        OnAndroidConnected?.Invoke(this, EventArgs.Empty);
-                    }
-                }
-            }
-            else if (string.Equals(msg, "UNSUBSCRIBE", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(msg, "DISCONNECT", StringComparison.OrdinalIgnoreCase))
-            {
-                lock (_epLock)
-                {
-                    if (_androidEp != null && _androidEp.Equals(remoteEp))
-                    {
-                        CoreLogger.Instance.Log($"[UdpMicReceiver] Android unsubscribed: {remoteEp}");
-                        _androidEp = null;
-                        OnAndroidDisconnected?.Invoke(this, EventArgs.Empty);
-                    }
-                }
             }
         }
 
@@ -278,47 +232,86 @@ namespace AudioTransfer.Core.Network
                 {
                     Thread.Sleep(2000);
 
-                    // Check timeout
                     lock (_epLock)
                     {
                         if (_androidEp != null && (DateTime.UtcNow - _lastPacketTime).TotalSeconds > 5)
                         {
                             CoreLogger.Instance.Log($"[UdpMicReceiver] Android {_androidEp} timed out.");
                             _androidEp = null;
+                            _state = HandshakeState.Disconnected;
                             OnAndroidDisconnected?.Invoke(this, EventArgs.Empty);
                         }
                     }
 
-                    // Heartbeat/timeout check loop
-                    IPEndPoint? sendTo = null;
-                    byte[]? payload = null;
-
                     lock (_epLock)
                     {
-                        if (_androidEp != null)
+                        if (_state == HandshakeState.Authenticated && _androidEp != null)
                         {
-                            sendTo = _androidEp;
-                            payload = Encoding.UTF8.GetBytes("HEARTBEAT");
+                            SendBinaryHandshake(CODEC_ACK_HANDSHAKE, _androidEp);
                         }
-                        else if (_targetEp != null)
+                        else if ((_state == HandshakeState.Disconnected || _state == HandshakeState.SynSent) && _targetEp != null)
                         {
-                            sendTo = _targetEp;
-                            payload = Encoding.UTF8.GetBytes("SUBSCRIBE");
+                            _state = HandshakeState.SynSent;
+                            SendBinaryHandshake(CODEC_SYN, _targetEp);
                         }
                     }
-
-                    if (sendTo != null && payload != null)
-                    {
-                        try
-                        {
-                            _udpClient?.Send(payload, payload.Length, sendTo);
-                        }
-                        catch { }
-                    }
-
                 }
                 catch { if (!_isRunning) break; }
             }
+        }
+
+        private void SendBinaryHandshake(byte codec, IPEndPoint target)
+        {
+            if (_udpClient == null || _udpClient.Client == null || target == null) return;
+            try
+            {
+                byte[] packet = new byte[3];
+                packet[2] = codec;
+                _udpClient.Client.SendTo(packet, packet.Length, SocketFlags.None, target);
+            }
+            catch { }
+        }
+
+        private void SendUdpRawAck(int msgId, IPEndPoint target)
+        {
+            if (_udpClient == null || _udpClient.Client == null || target == null) return;
+            byte[] packet = new byte[23];
+            packet[2] = CODEC_ACK;
+            BitConverter.TryWriteBytes(new Span<byte>(packet, 19, 4), msgId);
+            try { _udpClient.Client.SendTo(packet, packet.Length, SocketFlags.None, target); } catch { }
+        }
+
+        public async Task<bool> SendReliableControlAsync(string json)
+        {
+            if (_udpClient == null) return false;
+            IPEndPoint? target;
+            lock (_epLock) { target = _androidEp; }
+            if (target == null) return false;
+
+            int msgId = Interlocked.Increment(ref _controlMessageId);
+            byte[] jsonBytes = Encoding.UTF8.GetBytes(json);
+            byte[] packet = new byte[23 + jsonBytes.Length];
+            packet[2] = CODEC_CONTROL;
+            BitConverter.TryWriteBytes(new Span<byte>(packet, 19, 4), msgId);
+            Buffer.BlockCopy(jsonBytes, 0, packet, 23, jsonBytes.Length);
+
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingAcks[msgId] = tcs;
+
+            try
+            {
+                for (int attempt = 0; attempt < 5; attempt++)
+                {
+                    try { _udpClient.Client.SendTo(packet, packet.Length, SocketFlags.None, target); } catch { }
+                    var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(250));
+                    if (completedTask == tcs.Task && await tcs.Task) return true;
+                }
+            }
+            finally
+            {
+                _pendingAcks.TryRemove(msgId, out _);
+            }
+            return false;
         }
 
         public void Stop()

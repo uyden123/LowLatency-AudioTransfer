@@ -1,395 +1,424 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_dark">
+    android:background="@color/background_dark"
+    android:padding="20dp">
 
-    <androidx.core.widget.NestedScrollView
+    <!-- Header -->
+    <TextView
+        android:id="@+id/tvHeader"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Broadcasting"
+        android:textColor="@color/white"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
+        android:id="@+id/viewStatusDot"
+        android:layout_width="12dp"
+        android:layout_height="12dp"
+        android:layout_marginEnd="4dp"
+        android:background="@drawable/bg_connected_pill"
+        android:backgroundTint="@color/accent_green"
+        app:layout_constraintBottom_toBottomOf="@id/tvHeader"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/tvHeader" />
+
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="0dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="16dp"
+        app:layout_constraintBottom_toTopOf="@id/btnStopBroadcast"
+        app:layout_constraintTop_toBottomOf="@id/tvHeader">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:orientation="vertical">
 
-            <!-- Active Server Card Area -->
-            <RelativeLayout
+            <!-- Host Address Card -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:text="HOST ADDRESS"
+                android:textColor="@color/text_gray"
+                android:textSize="12sp"
+                android:letterSpacing="0.1"
+                android:textStyle="bold" />
+
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp">
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="32dp"
+                app:cardBackgroundColor="@color/card_background"
+                app:cardCornerRadius="24dp"
+                app:strokeWidth="0dp">
 
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardServerInfo"
+                <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="28dp"
-                    app:cardBackgroundColor="@color/card_background"
-                    app:cardCornerRadius="12dp"
-                    app:strokeWidth="0dp">
+                    android:paddingHorizontal="24dp"
+                    android:paddingVertical="16dp">
+
+                    <TextView
+                        android:id="@+id/tvHostAddress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:text="192.168.1.105"
+                        android:textColor="@color/white"
+                        android:textSize="26sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvHostPort"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignBaseline="@id/tvHostAddress"
+                        android:layout_toEndOf="@id/tvHostAddress"
+                        android:text=":5050"
+                        android:textColor="@color/text_gray"
+                        android:textSize="18sp" />
+
+                    <ImageButton
+                        android:id="@+id/btnCopyAddress"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_copy"
+                        app:tint="@color/primary_blue_light" />
+
+                </RelativeLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Audio Processing Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:text="Audio Processing"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <!-- Volume Boost Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                app:cardBackgroundColor="@color/card_background"
+                app:cardCornerRadius="24dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <ImageView
+                            android:id="@+id/ivBoostSub"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_connected_pill"
+                            android:backgroundTint="#1AFFFFFF"
+                            android:padding="8dp"
+                            android:src="@drawable/ic_volume_up"
+                            app:tint="@color/white" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_centerVertical="true"
+                            android:layout_marginStart="16dp"
+                            android:layout_toEndOf="@id/ivBoostSub"
+                            android:text="Volume Boost"
+                            android:textColor="@color/white"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.switchmaterial.SwitchMaterial
+                            android:id="@+id/swVolumeBoost"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:layout_centerVertical="true" />
+
+                    </RelativeLayout>
 
                     <RelativeLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:padding="20dp">
+                        android:layout_marginTop="16dp">
 
                         <TextView
-                            android:id="@+id/tvDeviceName"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Device Name"
-                            android:textColor="@color/white"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvMyIP"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_below="@id/tvDeviceName"
-                            android:layout_marginTop="6dp"
-                            android:text="192.168.1.XX"
+                            android:text="BOOST LEVEL"
                             android:textColor="@color/text_gray"
-                            android:textSize="14sp" />
+                            android:textSize="11sp"
+                            android:letterSpacing="0.05" />
 
-                        <LinearLayout
+                        <TextView
+                            android:id="@+id/tvBoostLevelValue"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_alignParentEnd="true"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <ImageView
-                                android:layout_width="14dp"
-                                android:layout_height="14dp"
-                                android:src="@drawable/ic_mic"
-                                app:tint="@color/text_gray" />
-
-                            <TextView
-                                android:id="@+id/tvTimer"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="6dp"
-                                android:text="00:00"
-                                android:textColor="@color/text_gray"
-                                android:textSize="14sp" />
-                        </LinearLayout>
+                            android:text="2.5x"
+                            android:textColor="@color/primary_blue_light"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
 
                     </RelativeLayout>
-                </com.google.android.material.card.MaterialCardView>
 
-                <com.google.android.material.floatingactionbutton.FloatingActionButton
-                    android:id="@+id/btnStopTransmitting"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignBottom="@id/cardServerInfo"
-                    android:layout_alignParentEnd="true"
-                    android:layout_marginBottom="-28dp"
-                    android:layout_marginEnd="16dp"
-                    android:src="@drawable/ic_stop"
-                    app:backgroundTint="#2D2D2D"
-                    app:fabSize="normal"
-                    app:tint="@color/white"
-                    app:elevation="4dp"
-                    android:clickable="true"
-                    android:focusable="true" />
-            </RelativeLayout>
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderVolumeLevel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:value="2.5"
+                        android:valueFrom="1.1"
+                        android:valueTo="5.0"
+                        android:stepSize="0.1"
+                        app:thumbColor="@color/primary_blue_light"
+                        app:trackColorActive="@color/primary_blue_light"
+                        app:trackColorInactive="#20FFFFFF" />
 
-            <!-- Connections Section -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Connections"
-                android:textColor="@color/white"
-                android:textSize="18sp"
-                android:layout_marginBottom="12dp" />
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1.1x" android:textColor="@color/text_gray" android:textSize="10sp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentEnd="true" android:text="5.0x" android:textColor="@color/text_gray" android:textSize="10sp"/>
+                    </RelativeLayout>
 
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Noise Suppression Card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="32dp"
                 app:cardBackgroundColor="@color/card_background"
-                app:cardCornerRadius="8dp"
-                app:strokeWidth="0dp">
-
-                <TextView
-                    android:id="@+id/tvConnectionStatus"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:padding="20dp"
-                    android:text="No connected device yet"
-                    android:textColor="@color/text_gray"
-                    android:textSize="15sp" />
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Audio effects Section (App) -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Audio effects"
-                android:textColor="@color/white"
-                android:textSize="18sp"
-                android:layout_marginBottom="2dp" />
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Effects provided by the app"
-                android:textColor="@color/text_gray"
-                android:textSize="14sp"
-                android:layout_marginBottom="12dp" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                app:cardBackgroundColor="@color/card_background"
-                app:cardCornerRadius="8dp"
+                app:cardCornerRadius="24dp"
                 app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:paddingHorizontal="20dp"
-                    android:paddingVertical="10dp">
+                    android:padding="20dp">
 
-                    <!-- Volume boost -->
-                    <LinearLayout
+                    <RelativeLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingVertical="10dp">
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_volume_up"
-                            app:tint="@color/white" />
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginStart="16dp"
-                            android:orientation="vertical">
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Volume boost"
-                                android:textColor="@color/white"
-                                android:textSize="15sp" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Increase the volume. Can cause clipping if too high"
-                                android:textColor="@color/text_gray"
-                                android:textSize="13sp" />
-                        </LinearLayout>
-                        <com.google.android.material.switchmaterial.SwitchMaterial
-                            android:id="@+id/swVolumeBoost"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
-                    </LinearLayout>
+                        android:layout_height="wrap_content">
 
-                    <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#33FFFFFF" android:layout_marginStart="40dp"/>
-
-                    <!-- Noise suppression (App) -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingVertical="10dp">
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:id="@+id/ivNSSub"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_connected_pill"
+                            android:backgroundTint="#1AFFFFFF"
+                            android:padding="8dp"
                             android:src="@drawable/ic_noise"
                             app:tint="@color/white" />
-                        <LinearLayout
-                            android:layout_width="0dp"
+
+                        <TextView
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
+                            android:layout_centerVertical="true"
                             android:layout_marginStart="16dp"
-                            android:orientation="vertical">
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Noise suppression (RNNoise)"
-                                android:textColor="@color/white"
-                                android:textSize="15sp" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Remove or reduce noises such as keyboard keys, white noise or PC fans. It increases the CPU usage"
-                                android:textColor="@color/text_gray"
-                                android:textSize="13sp" />
-                        </LinearLayout>
-                        <com.google.android.material.switchmaterial.SwitchMaterial
-                            android:id="@+id/swAppNoiseSuppression"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <!-- AEC AI removed -->
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Capture Behavior Section -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Capture engine"
-                android:textColor="@color/white"
-                android:textSize="18sp"
-                android:layout_marginBottom="2dp" />
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Native AAudio provides lower latency"
-                android:textColor="@color/text_gray"
-                android:textSize="14sp"
-                android:layout_marginBottom="12dp" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                app:cardBackgroundColor="@color/card_background"
-                app:cardCornerRadius="8dp"
-                app:strokeWidth="0dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="20dp"
-                    android:paddingVertical="10dp">
-
-                    <!-- AAudio Toggle -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingVertical="10dp">
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Use AAudio (Oboe)"
-                                android:textColor="@color/white"
-                                android:textSize="15sp" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Lowest possible capture latency"
-                                android:textColor="@color/text_gray"
-                                android:textSize="13sp" />
-                        </LinearLayout>
-                        <com.google.android.material.switchmaterial.SwitchMaterial
-                            android:id="@+id/swAAudio"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#33FFFFFF" android:layout_marginStart="0dp"/>
-
-                    <!-- Exclusive Mode Toggle -->
-                    <LinearLayout
-                        android:id="@+id/llExclusive"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingVertical="10dp">
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Exclusive Mode"
-                                android:textColor="@color/white"
-                                android:textSize="15sp" />
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Bypasses system mixer for best performance"
-                                android:textColor="@color/text_gray"
-                                android:textSize="13sp" />
-                        </LinearLayout>
-                        <com.google.android.material.switchmaterial.SwitchMaterial
-                            android:id="@+id/swExclusive"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
-                    </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardMicMode"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="32dp"
-                android:clickable="true"
-                android:focusable="true"
-                app:cardBackgroundColor="@color/card_background"
-                app:cardCornerRadius="8dp"
-                app:strokeWidth="0dp">
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="20dp">
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_mic"
-                        app:tint="@color/white" />
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="16dp"
-                        android:orientation="vertical">
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Microphone mode"
+                            android:layout_toEndOf="@id/ivNSSub"
+                            android:text="Noise Suppression"
                             android:textColor="@color/white"
-                            android:textSize="15sp" />
-                        <TextView
-                            android:id="@+id/tvMicModeValue"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Voice communication"
-                            android:textColor="@color/white"
-                            android:textSize="14sp"
+                            android:textSize="16sp"
                             android:textStyle="bold" />
+
+                    </RelativeLayout>
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/toggleNS"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        app:singleSelection="true"
+                        app:selectionRequired="true"
+                        app:checkedButton="@+id/btnNsDeepFilter"
+                        android:background="@drawable/bg_connected_pill"
+                        android:backgroundTint="#0DFFFFFF">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnNsOff"
+                            style="@style/Widget.MaterialComponents.Button.TextButton"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:text="Off"
+                            android:textAllCaps="false"
+                            android:textColor="@color/white"
+                            app:backgroundTint="@android:color/transparent"
+                            app:rippleColor="#20FFFFFF" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnNsRNNoise"
+                            style="@style/Widget.MaterialComponents.Button.TextButton"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:text="RNNoise"
+                            android:textAllCaps="false"
+                            android:textColor="@color/white"
+                            app:backgroundTint="@android:color/transparent"
+                            app:rippleColor="#20FFFFFF" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnNsDeepFilter"
+                            style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1.2"
+                            android:text="DeepFilterNet"
+                            android:textAllCaps="false"
+                            android:textColor="@color/white"
+                            app:backgroundTint="#2D323A"
+                            app:cornerRadius="20dp" />
+
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp">
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Enables echo cancellation and volume normalization"
+                            android:text="SUPPRESSION STRENGTH"
                             android:textColor="@color/text_gray"
-                            android:textSize="13sp" />
-                    </LinearLayout>
-                    <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:src="@drawable/ic_chevron_right"
-                        app:tint="@color/text_gray" />
+                            android:textSize="11sp"
+                            android:letterSpacing="0.05" />
+
+                        <TextView
+                            android:id="@+id/tvNsStrengthValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:text="45dB"
+                            android:textColor="@color/primary_blue_light"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                    </RelativeLayout>
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderNoiseLevel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:value="45"
+                        android:valueFrom="10"
+                        android:valueTo="100"
+                        android:stepSize="1"
+                        app:thumbColor="@color/primary_blue_light"
+                        app:trackColorActive="@color/primary_blue_light"
+                        app:trackColorInactive="#20FFFFFF" />
+
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="10dB" android:textColor="@color/text_gray" android:textSize="10sp"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentEnd="true" android:text="100dB" android:textColor="@color/text_gray" android:textSize="10sp"/>
+                    </RelativeLayout>
+
                 </LinearLayout>
+
             </com.google.android.material.card.MaterialCardView>
+
+            <!-- Connected Clients Section -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Connected Clients"
+                    android:textColor="@color/white"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvActiveCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:background="@drawable/bg_connected_pill"
+                    android:backgroundTint="#0DFFFFFF"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp"
+                    android:text="2 ACTIVE"
+                    android:textColor="@color/text_gray"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+            </RelativeLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvClients"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                tools:listitem="@layout/item_connected_client" />
+            
+            <TextView
+                android:id="@+id/tvNoClients"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:padding="24dp"
+                android:text="No connected device yet"
+                android:textColor="@color/text_gray"
+                android:textSize="15sp"
+                android:visibility="gone" />
 
         </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
+    </ScrollView>
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+    <!-- Stop Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnStopBroadcast"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:text="STOP BROADCAST"
+        android:textColor="#3E2723"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:icon="@drawable/ic_stop"
+        app:iconGravity="textStart"
+        app:iconPadding="12dp"
+        app:iconSize="20dp"
+        app:iconTint="#3E2723"
+        app:backgroundTint="#F8BBD0"
+        app:cornerRadius="32dp"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

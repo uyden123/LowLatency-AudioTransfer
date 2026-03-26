@@ -1,0 +1,42 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=mscorlib">
+
+    <system:String x:Key="LblServerTabTitle">Server</system:String>
+    <system:String x:Key="LblServerTabDesc">Send audio from this device to another</system:String>
+    <system:String x:Key="LblSendAudio">Send audio</system:String>
+    <system:String x:Key="LblSendAudioDesc">Send the audio played on this computer to another device</system:String>
+    <system:String x:Key="LblConnections">Connections</system:String>
+    <system:String x:Key="LblAudioDevice">Audio device</system:String>
+    <system:String x:Key="LblAudioDeviceDesc">Select which audio device to stream</system:String>
+    <system:String x:Key="LblDeviceName">Device name</system:String>
+    <system:String x:Key="LblDeviceNameDesc">The name displayed to other devices</system:String>
+    <system:String x:Key="LblDarkTheme">Dark theme</system:String>
+    <system:String x:Key="LblTray">Minimize to system tray</system:String>
+    <system:String x:Key="LblTrayDesc">Hide the window in the system tray when minimized</system:String>
+    <system:String x:Key="LblLanguage">Language</system:String>
+    <system:String x:Key="LblLanguageDesc">Choose the display language</system:String>
+    <system:String x:Key="LblStartup">Launch AudioTransfer on computer startup</system:String>
+    <system:String x:Key="LblAutoMute">Mute system audio when streaming</system:String>
+    <system:String x:Key="LblAutoMuteDesc">Automatically mute the PC when audio is being sent</system:String>
+    <system:String x:Key="LblLogs">System logs</system:String>
+    <system:String x:Key="LblLogsDesc">View application events and debug information</system:String>
+    <system:String x:Key="NavServerText">Server</system:String>
+    <system:String x:Key="NavPlayerText">Player</system:String>
+    <system:String x:Key="NavSettingsText">Settings</system:String>
+    <system:String x:Key="LblSelectAudioDevice">Select audio device</system:String>
+    <system:String x:Key="LblSelectAudioDeviceDesc">Choose which audio output to capture and stream</system:String>
+    <system:String x:Key="ChkAutoConnect">Auto connect</system:String>
+
+    <!-- Icons (Segoe MDL2 Assets) -->
+    <system:String x:Key="IconServer">&#xEBC6;</system:String>
+    <system:String x:Key="IconPlayer">&#xE768;</system:String>
+    <system:String x:Key="IconSettings">&#xE713;</system:String>
+    <system:String x:Key="IconMic">&#xE720;</system:String>
+    <system:String x:Key="IconAudio">&#xE8D6;</system:String>
+    <system:String x:Key="IconDiscovery">&#xE83B;</system:String>
+    <system:String x:Key="IconBuffer">&#xE9E9;</system:String>
+    <system:String x:Key="IconLatency">&#xE81C;</system:String>
+    <system:String x:Key="IconMobile">&#xE8EA;</system:String>
+    <system:String x:Key="IconClose">&#xE711;</system:String>
+</ResourceDictionary>

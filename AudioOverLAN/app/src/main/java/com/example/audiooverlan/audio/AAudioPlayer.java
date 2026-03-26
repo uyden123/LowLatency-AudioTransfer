@@ -56,13 +56,17 @@ public class AAudioPlayer {
      * @return true if stream started successfully
      */
     public boolean start(int sampleRate, int channelCount, int framesPerBuffer, boolean exclusive) {
+        return start(sampleRate, channelCount, framesPerBuffer, exclusive, 1, 2); // Default: Media, Music
+    }
+
+    public boolean start(int sampleRate, int channelCount, int framesPerBuffer, boolean exclusive, int usage, int contentType) {
         if (!nativeLibLoaded) {
             Log.e(TAG, "Cannot start: native library not loaded");
             return false;
         }
 
         try {
-            boolean result = nativeStart(sampleRate, channelCount, framesPerBuffer, exclusive);
+            boolean result = nativeStart(sampleRate, channelCount, framesPerBuffer, exclusive, usage, contentType);
             isStarted = result;
             if (result) {
                 Log.i(TAG, "Stream info: " + getStreamInfo());
@@ -117,6 +121,15 @@ public class AAudioPlayer {
         }
     }
 
+    public void setVolume(float volume) {
+        if (!isStarted) return;
+        try {
+            nativeSetVolume(volume);
+        } catch (Exception e) {
+            Log.e(TAG, "SetVolume error", e);
+        }
+    }
+
     /**
      * Get stream info string for debugging.
      */
@@ -129,15 +142,45 @@ public class AAudioPlayer {
         }
     }
 
+    /**
+     * Decode Opus data and write directly to the native stream.
+     * This avoids passing large PCM arrays between Java and C++.
+     * @param opusData Encoded Opus packet, or null for PLC (Packet Loss Concealment)
+     * @param frameSizeSamples Expected samples per frame (e.g. 120 for 2.5ms @ 48kHz)
+     * @param speedRatio Playback speed ratio (for drift compensation resampling)
+     * @return Number of samples written
+     */
+    public int writeEncoded(byte[] opusData, int length, int frameSizeSamples, double speedRatio, boolean useFEC) {
+        if (!isStarted) return 0;
+        try {
+            return nativeWriteEncoded(opusData, length, frameSizeSamples, speedRatio, useFEC);
+        } catch (Exception e) {
+            Log.e(TAG, "WriteEncoded error", e);
+            return 0;
+        }
+    }
+
+    public int getBufferedFrames() {
+        if (!isStarted) return 0;
+        try {
+            return nativeGetBufferedFrames();
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     public boolean isStarted() {
         return isStarted;
     }
 
     // Native methods
-    private native boolean nativeStart(int sampleRate, int channelCount, int framesPerBuffer, boolean exclusive);
+    private native boolean nativeStart(int sampleRate, int channelCount, int framesPerBuffer, boolean exclusive, int usage, int contentType);
     private native int nativeWrite(short[] samples, int offset, int length);
+    private native int nativeWriteEncoded(byte[] opusData, int length, int frameSizeSamples, double speedRatio, boolean useFEC);
+    private native void nativeSetVolume(float volume);
     private native void nativeStop();
     private native double nativeGetLatencyMs();
+    private native int nativeGetBufferedFrames();
     private native boolean nativeIsAAudioSupported();
     private native String nativeGetStreamInfo();
 }

@@ -52,14 +52,14 @@ public class AAudioRecorder {
      * @param exclusive Whether to request EXCLUSIVE sharing mode
      * @return true if stream started successfully
      */
-    public boolean start(int sampleRate, int channelCount, boolean exclusive) {
+    public boolean start(int sampleRate, int channelCount, boolean exclusive, int deviceId) {
         if (!nativeLibLoaded) {
             Log.e(TAG, "Cannot start: native library not loaded");
             return false;
         }
 
         try {
-            boolean result = nativeStart(sampleRate, channelCount, exclusive);
+            boolean result = nativeStart(sampleRate, channelCount, exclusive, deviceId);
             isStarted = result;
             if (result) {
                 Log.i(TAG, "Recorder started. Info: " + getStreamInfo());
@@ -120,7 +120,7 @@ public class AAudioRecorder {
     }
 
     // Native methods
-    private native boolean nativeStart(int sampleRate, int channelCount, boolean exclusive);
+    private native boolean nativeStart(int sampleRate, int channelCount, boolean exclusive, int deviceId);
     private native int nativeRead(short[] samples, int offset, int length);
     private native void nativeStop();
     private native boolean nativeIsAAudioSupported();

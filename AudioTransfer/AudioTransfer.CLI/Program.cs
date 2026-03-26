@@ -114,7 +114,8 @@ namespace AudioTransfer.CLI
             Console.Write($"\n  {CYAN}>{RESET} UDP listen port {DIM}(default 5000){RESET}: ");
             int port = PromptInt(5000, 1, 65535);
 
-            var config = await ServerConfig.LoadOrDefaultAsync();
+            var repo = new JsonFileConfigRepository<ServerConfig>("server_config.json");
+            var config = await repo.LoadOrDefaultAsync();
             using var engine = new AudioEngine(config);
 
             WireEngineEvents(engine);
@@ -148,24 +149,31 @@ namespace AudioTransfer.CLI
 
             // List available playback devices
             Console.WriteLine($"\n  {BOLD}Available Playback Devices:{RESET}");
-            var devices = WasapiPlayer.GetAvailableDevices();
-            int autoSelectId = -1;
-            foreach (var kv in devices)
+            var devicesList = WasapiPlayer.GetRenderDeviceList();
+            
+            Console.WriteLine($"    {GREEN}0{RESET}: {DIM}[System Default]{RESET}");
+            
+            int autoSelectIdx = -1;
+            for (int i = 0; i < devicesList.Count; i++)
             {
-                bool isVBCable = kv.Value.Contains("CABLE Input", StringComparison.OrdinalIgnoreCase);
+                var dev = devicesList[i];
+                bool isVBCable = dev.Name.Contains("CABLE Input", StringComparison.OrdinalIgnoreCase);
                 string highlight = isVBCable ? $"{GREEN}{BOLD}" : "";
                 string suffix = isVBCable ? $" {DIM}(VB-Cable suggested){RESET}" : "";
-                Console.WriteLine($"    {GREEN}{kv.Key}{RESET}: {highlight}{kv.Value}{RESET}{suffix}");
-                if (isVBCable && autoSelectId == -1) autoSelectId = (int)kv.Key;
+                Console.WriteLine($"    {GREEN}{i + 1}{RESET}: {highlight}{dev.Name}{RESET}{suffix}");
+                if (isVBCable && autoSelectIdx == -1) autoSelectIdx = i + 1;
             }
 
-            Console.Write($"\n  {CYAN}>{RESET} Select device ID {DIM}(default {(autoSelectId >= 0 ? autoSelectId : "0")}){RESET}: ");
-            int deviceId = PromptInt(autoSelectId >= 0 ? autoSelectId : 0, 0, (int)devices.Keys.Max());
+            Console.Write($"\n  {CYAN}>{RESET} Select device [0-{devicesList.Count}] {DIM}(default {(autoSelectIdx >= 0 ? autoSelectIdx : "0")}){RESET}: ");
+            int choice = PromptInt(autoSelectIdx >= 0 ? autoSelectIdx : 0, 0, devicesList.Count);
+            
+            string? selectedId = (choice > 0) ? devicesList[choice - 1].Id : null;
+            string displayName = (choice > 0) ? devicesList[choice - 1].Name : "System Default";
 
             using var engine = new AudioEngine();
             WireEngineEvents(engine);
 
-            bool success = await engine.StartAndroidMicListenerAsync(androidIp, port, deviceId);
+            bool success = await engine.StartAndroidMicListenerAsync(androidIp, port, selectedId);
             if (!success)
             {
                 PrintError($"Could not connect to {androidIp}:{port}. Ensure Android server is running.");
@@ -175,7 +183,7 @@ namespace AudioTransfer.CLI
 
             ClearScreen();
             PrintModeHeader("Android Mic -> PC Driver", "UDP Receiver", port);
-            Console.WriteLine($"  {BOLD}Output:{RESET} {devices[(uint)deviceId]}");
+            Console.WriteLine($"  {BOLD}Output:{RESET} {displayName}");
 
             Console.WriteLine($"\n  {DIM}Working... Press 'q' + Enter to go back{RESET}\n");
 

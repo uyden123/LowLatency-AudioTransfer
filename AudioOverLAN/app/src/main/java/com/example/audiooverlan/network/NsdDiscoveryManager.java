@@ -18,7 +18,7 @@ public class NsdDiscoveryManager {
     private static final String SERVICE_TYPE = "_audiooverlan._udp.";
 
     public interface OnServerDiscoveredListener {
-        void onServerDiscovered(String ip, int port);
+        void onServerDiscovered(String name, String ip, int port);
         void onServerLost(String ip);
     }
 
@@ -144,7 +144,8 @@ public class NsdDiscoveryManager {
                 lastResolvedName = resolvedInfo.getServiceName();
 
                 if (host != null && listener != null) {
-                    mainHandler.post(() -> listener.onServerDiscovered(host, port));
+                    String name = resolvedInfo.getServiceName();
+                    mainHandler.post(() -> listener.onServerDiscovered(name, host, port));
                 }
             }
         });

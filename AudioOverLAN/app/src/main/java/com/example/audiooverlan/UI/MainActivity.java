@@ -1,6 +1,7 @@
 package com.example.audiooverlan.UI;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,6 +21,8 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.audiooverlan.R;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -29,10 +32,22 @@ public class MainActivity extends AppCompatActivity {
     private View navIndicator;
     private MainPagerAdapter adapter;
 
-    private final ActivityResultLauncher<String> requestPermissionLauncher =
-            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
-                if (isGranted) {
-                    // Try to start auto server if mic permission was just granted
+    private final ActivityResultLauncher<Intent> mediaProjectionLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null) {
+                    startAppsStreamingWithToken(result.getData());
+                } else {
+                    Toast.makeText(this, "Permission denied for app capture", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+    private final ActivityResultLauncher<String[]> requestPermissionsLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
+                boolean granted = true;
+                for (Boolean b : result.values()) {
+                    if (b != null && !b) granted = false;
+                }
+                if (granted) {
                     startAutoServer();
                 } else {
                     Toast.makeText(this, "Quyền truy cập là cần thiết để ứng dụng hoạt động", Toast.LENGTH_LONG).show();
@@ -45,8 +60,8 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
-        View appBarLayout = findViewById(R.id.appBarLayout);
-        ViewCompat.setOnApplyWindowInsetsListener(appBarLayout, (v, insets) -> {
+        View mainContent = findViewById(R.id.main_content);
+        ViewCompat.setOnApplyWindowInsetsListener(mainContent, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(0, systemBars.top, 0, 0);
             return insets;
@@ -58,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
 
         adapter = new MainPagerAdapter(this);
         viewPager.setAdapter(adapter);
+        viewPager.setOffscreenPageLimit(3);
 
         navIndicator.post(() -> {
             int width = bottomNavigationView.getWidth() / 3;
@@ -128,7 +144,9 @@ public class MainActivity extends AppCompatActivity {
 
     public void onTransmitterStateChanged() {
         if (adapter != null) {
-            adapter.notifyItemChanged(1);
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                adapter.notifyItemChanged(1);
+            });
         }
     }
 
@@ -140,13 +158,33 @@ public class MainActivity extends AppCompatActivity {
             permissions = new String[]{Manifest.permission.RECORD_AUDIO};
         }
 
-        for (String permission : permissions) {
-            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissionLauncher.launch(permission);
-                break; // Launchers usually handle one at a time or we need multiple launchers. 
-                       // For simplicity, we'll request if any are missing. 
-                       // requestPermissionLauncher only takes one string.
+        List<String> missing = new ArrayList<>();
+        for (String p : permissions) {
+            if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
+                missing.add(p);
             }
         }
+        
+        if (!missing.isEmpty()) {
+            requestPermissionsLauncher.launch(missing.toArray(new String[0]));
+        }
+    }
+
+    public void requestAppCapture() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            android.media.projection.MediaProjectionManager mpm =
+                    (android.media.projection.MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+            mediaProjectionLauncher.launch(mpm.createScreenCaptureIntent());
+        }
+    }
+
+    private void startAppsStreamingWithToken(Intent data) {
+        Intent intent = new Intent(this, com.example.audiooverlan.services.AudioTransmitterService.class);
+        intent.putExtra("SOURCE", "Apps");
+        intent.putExtra("PROJECTION_DATA", data);
+        intent.putExtra("PORT", 5003);
+        ContextCompat.startForegroundService(this, intent);
+        com.example.audiooverlan.services.AudioTransmitterService.isServiceRunning = true;
+        onTransmitterStateChanged();
     }
 }

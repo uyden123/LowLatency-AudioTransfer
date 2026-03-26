@@ -67,19 +67,33 @@ public class ServerFragment extends Fragment {
         });
 
         cardApps.setOnClickListener(v -> {
-            Toast.makeText(getContext(), "App Audio streaming requires Android 10+ and additional setup.", Toast.LENGTH_LONG).show();
+            if (AudioTransmitterService.isServiceRunning) {
+                stopTransmitterService();
+            } else {
+                if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
+                    Toast.makeText(getContext(), "Streaming apps requires Android 10+", Toast.LENGTH_LONG).show();
+                } else {
+                    startAppsStreaming();
+                }
+            }
         });
 
         return view;
     }
 
+    private void startAppsStreaming() {
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).requestAppCapture();
+        }
+    }
+
     private void updateStatusText() {
         if (!isAdded()) return;
         if (AudioTransmitterService.isServiceRunning) {
-            tvServerStatus.setText("Status: Transmitting...");
-            tvServerStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary_green));
+            tvServerStatus.setText("Transmitting...");
+            tvServerStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.accent_green));
         } else {
-            tvServerStatus.setText("Status: Idle");
+            tvServerStatus.setText("Ready to Broadcast");
             tvServerStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_gray));
         }
     }
@@ -99,7 +113,6 @@ public class ServerFragment extends Fragment {
         intent.putExtra("PORT", 5003);
         ContextCompat.startForegroundService(requireContext(), intent);
 
-        // Notify activity to refresh fragment (switch to TransmittingFragment)
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).onTransmitterStateChanged();
         }

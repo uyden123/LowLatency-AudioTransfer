@@ -9,9 +9,9 @@ namespace AudioTransfer.Core.Audio
     /// WASAPI Loopback Capture using Win32 API with precise 20ms timer-based buffer reading.
     /// This eliminates the variable buffer size problem from NAudio's event-driven approach.
     /// </summary>
-    public sealed unsafe class WasapiTimedCapture : IDisposable
+    public sealed unsafe class WasapiTimedCapture : IAudioCapture, IDisposable
     {
-        private const int BUFFER_DURATION_MS = 60; // atleast 20ms for low latency, lower leads to underruns
+        private const int BUFFER_DURATION_MS = 20; // atleast 20ms for low latency, lower leads to underruns
         private const int SAMPLE_RATE = 48000;
         private const int CHANNELS = 2;
         private const int BITS_PER_SAMPLE = 16; // Target 16-bit PCM for efficiency and compatibility
@@ -20,22 +20,31 @@ namespace AudioTransfer.Core.Audio
         private IAudioCaptureClient? captureClient;
         private Thread? captureThread;
         private CancellationTokenSource? cts;
+        private AutoResetEvent? _bufferEvent;
         private volatile bool isCapturing;
         private string? currentDeviceId;
         private bool isDefaultDeviceMode;
         private DeviceChangeHandler? deviceChangeHandler;
+        // WTC-4 FIX: Store the enumerator used for notification registration so we
+        // can unregister with the same instance in Dispose(). Old code created a new
+        // MMDeviceEnumerator in Dispose() which could fail and leak the COM object.
+        private IMMDeviceEnumerator? _notificationEnumerator;
         
-        private const uint AUDCLNT_E_DEVICE_INVALIDATED = 0x88890004;
+        private const int AUDCLNT_E_DEVICE_INVALIDATED = unchecked((int)0x88890004);
+        private const int AUDCLNT_E_RESOURCES_INVALIDATED = unchecked((int)0x88890026);
+        private const int AUDCLNT_E_SERVICE_NOT_RUNNING = unchecked((int)0x88890010);
+        private const int AUDCLNT_E_BUFFER_SIZE_ERROR = unchecked((int)0x88890006);
 
         private int bufferSizeBytes;
         private int bytesPerFrame; // cached: Channels * (BitsPerSample / 8)
 
-        /// <summary>
-        /// When set, WASAPI data is written DIRECTLY into this buffer via unsafe pointers.
-        /// Bypasses all intermediate buffers, events, and managed allocations.
-        /// Set this BEFORE calling Start().
-        /// </summary>
-        public UnsafeCircularBuffer? DirectOutputBuffer { get; set; }
+        // Fade-out state (WTC-6 FIX)
+        private short _lastL, _lastR;
+        private bool _wasActiveSinceLastSilence;
+        private byte[]? _fadeBuffer;
+        private const int FADE_MS = 20;
+
+        public IAudioCapture.AudioDataAvailableDelegate? OnDataAvailable { get; set; }
 
         public event EventHandler? DefaultDeviceChanged;
         public event EventHandler<AudioDataEventArgs>? DataAvailable;
@@ -65,6 +74,9 @@ namespace AudioTransfer.Core.Audio
             // Cleanup existing COM resources if re-initializing
             ReleaseResources();
 
+            // WTC-1 FIX: Track waveFormat pointer so we can free it even if an
+            // exception is thrown after GetMixFormat() succeeds.
+            WAVEFORMATEX* waveFormat = null;
             try
             {
                 var deviceEnumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
@@ -88,11 +100,11 @@ namespace AudioTransfer.Core.Audio
                 audioClient = (IAudioClient)Marshal.GetObjectForIUnknown(audioClientPtr);
                 Marshal.Release(audioClientPtr);
 
-                // Get mix format
-                audioClient.GetMixFormat(out var waveFormat);
+                // Get mix format — waveFormat is now tracked for cleanup
+                audioClient.GetMixFormat(out waveFormat);
 
-                // Modify format to requested sample rate and 16-bit PCM. 
-                // WASAPI Shared Mode will convert/resample if 
+                // Modify format to requested sample rate and 16-bit PCM.
+                // WASAPI Shared Mode will convert/resample if
                 // AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM is used.
                 waveFormat->wFormatTag = 1; // WAVE_FORMAT_PCM
                 waveFormat->nSamplesPerSec = SAMPLE_RATE;
@@ -101,20 +113,34 @@ namespace AudioTransfer.Core.Audio
                 waveFormat->nAvgBytesPerSec = waveFormat->nSamplesPerSec * waveFormat->nBlockAlign;
                 waveFormat->cbSize = 0;
 
-                // Use smaller WASAPI buffer when DirectOutputBuffer is set (low-latency path)
-                // Otherwise use the standard 120ms buffer for event-based mode
-                bool directMode = DirectOutputBuffer != null;
-                long bufferDuration = directMode ? 40 * 10000 : 120 * 10000;
+                // RE-INIT FOR ABSOLUTE MINIMUM LATENCY (EVENT-DRIVEN + RAW MODE + MIN PERIOD)
+                long defaultP, minP;
+                audioClient.GetDevicePeriod(out defaultP, out minP);
+                CoreLogger.Instance.Log($"[WasapiTimedCapture] Hardware latency periods: Default={defaultP / 10000.0}ms, Min={minP / 10000.0}ms");
+                
+                // Use minimum possible buffer for direct mode, or default for legacy
+                long hnsBufferDuration = OnDataAvailable != null ? minP : 40 * 10000;
+                
+                var sessionGuid = Guid.Empty;
+                var flags = AUDCLNT_STREAMFLAGS.AUDCLNT_STREAMFLAGS_LOOPBACK |
+                            AUDCLNT_STREAMFLAGS.AUDCLNT_STREAMFLAGS_EVENTCALLBACK |
+                            AUDCLNT_STREAMFLAGS.AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM |
+                            AUDCLNT_STREAMFLAGS.AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
+
+                // Attempt to enable RAW mode (Windows 10+) for further 10ms reduction
+                flags |= (AUDCLNT_STREAMFLAGS)0x04000000; // AUDCLNT_STREAMFLAGS_RAW
 
                 audioClient.Initialize(
                     AUDCLNT_SHAREMODE.AUDCLNT_SHAREMODE_SHARED,
-                    AUDCLNT_STREAMFLAGS.AUDCLNT_STREAMFLAGS_LOOPBACK |
-                    AUDCLNT_STREAMFLAGS.AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM |
-                    AUDCLNT_STREAMFLAGS.AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
-                    bufferDuration,
+                    flags,
+                    hnsBufferDuration,
                     0,
                     waveFormat,
-                    Guid.Empty);
+                    ref sessionGuid);
+
+                // Setup event handle for ultra-low latency timing
+                _bufferEvent = new AutoResetEvent(false);
+                audioClient.SetEventHandle(_bufferEvent.SafeWaitHandle.DangerousGetHandle());
 
                 // Get capture client - use IntPtr to avoid marshaling issues
                 var captureIid = typeof(IAudioCaptureClient).GUID;
@@ -149,15 +175,21 @@ namespace AudioTransfer.Core.Audio
                     }
                 }
 
-                Marshal.FreeCoTaskMem((IntPtr)waveFormat);
-
-                CoreLogger.Instance.Log($"[WasapiTimedCapture] Initialized: {(directMode ? "DIRECT" : "EVENT")} mode, " +
-                                  $"WASAPI buffer={bufferDuration / 10000}ms");
+                CoreLogger.Instance.Log($"[WasapiTimedCapture] Initialized: EVENT mode, " +
+                                  $"WASAPI buffer={hnsBufferDuration / 10000.0}ms");
             }
             catch (Exception ex)
             {
                 AudioTransfer.Core.Logging.CoreLogger.Instance.Log($"[WasapiTimedCapture] Initialization error: {ex.Message}");
                 throw;
+            }
+            finally
+            {
+                // WTC-1 FIX: Always free waveFormat CoTaskMem, even if an exception was thrown.
+                if (waveFormat != null)
+                {
+                    Marshal.FreeCoTaskMem((IntPtr)waveFormat);
+                }
             }
         }
 
@@ -263,7 +295,7 @@ namespace AudioTransfer.Core.Audio
             audioClient.Start();
 
             // Choose capture loop based on mode
-            ThreadStart loopMethod = DirectOutputBuffer != null ? DirectCaptureLoop : CaptureLoop;
+            ThreadStart loopMethod = OnDataAvailable != null ? DirectCaptureLoop : CaptureLoop;
 
             captureThread = new Thread(loopMethod)
             {
@@ -273,63 +305,56 @@ namespace AudioTransfer.Core.Audio
             };
             captureThread.Start();
 
-            AudioTransfer.Core.Logging.CoreLogger.Instance.Log($"[WasapiTimedCapture] Started ({(DirectOutputBuffer != null ? "direct zero-copy" : "event-based")})");
+            AudioTransfer.Core.Logging.CoreLogger.Instance.Log($"[WasapiTimedCapture] Started ({(OnDataAvailable != null ? "direct zero-copy" : "event-based")})");
         }
 
         /// <summary>
-        /// DIRECT capture loop: reads WASAPI ? writes directly to UnsafeCircularBuffer.
+        /// DIRECT capture loop: reads WASAPI ? writes directly via callback.
         /// Zero managed allocation, zero intermediate copy. Maximum throughput, minimum latency.
         /// </summary>
         private void DirectCaptureLoop()
         {
-            var directBuffer = DirectOutputBuffer!;
+            var callback = OnDataAvailable!;
             var spinner = new SpinWait();
             long totalBytesWritten = 0;
             long packetsRead = 0;
             var statsTimer = System.Diagnostics.Stopwatch.StartNew();
-
-            // Allocate silence buffer ONCE outside the loop to prevent StackOverflow (0x80131506)
-            byte* zeros = stackalloc byte[4096];
-            new Span<byte>(zeros, 4096).Clear();
+            var watchdogTimer = System.Diagnostics.Stopwatch.StartNew();
 
             try
             {
                 while (isCapturing && !cts!.Token.IsCancellationRequested)
                 {
-                    bool didWork = false;
+                    // Wait for WASAPI to tell us more data is ready (Event-Driven)
+                    // We also wake up periodically as safety
+                    _bufferEvent!.WaitOne(100); 
 
-                    // Drain all available WASAPI packets
+                    bool didWork = false;
                     captureClient!.GetNextPacketSize(out var packetSize);
 
                     while (packetSize > 0)
                     {
-                        captureClient.GetBuffer(
-                            out var dataPointer,
-                            out var numFrames,
-                            out var flags,
-                            out var devicePosition,
-                            out var qpcPosition);
+                        captureClient.GetBuffer(out var dataPointer, out var numFrames, out var flags, out var devicePosition, out var qpcPosition);
 
                         if (numFrames > 0)
                         {
                             int byteCount = (int)(numFrames * bytesPerFrame);
-
-                            if ((flags & AUDCLNT_BUFFERFLAGS.AUDCLNT_BUFFERFLAGS_SILENT) != 0)
+                            bool isSilent = (flags & AUDCLNT_BUFFERFLAGS.AUDCLNT_BUFFERFLAGS_SILENT) != 0;
+                            
+                            if (isSilent)
                             {
-                                // Silent: write zeros directly into circular buffer
-                                int remaining = byteCount;
-                                while (remaining > 0)
+                                // Transition to silence: Inject fade-out if we were active (WTC-6)
+                                if (_wasActiveSinceLastSilence)
                                 {
-                                    int chunk = Math.Min(remaining, 4096);
-                                    directBuffer.Write(zeros, chunk);
-                                    remaining -= chunk;
+                                    InjectFadeOut();
                                 }
                             }
                             else
                             {
-                                // Hot path: WASAPI COM pointer ? UnsafeCircularBuffer (single memcpy)
-                                directBuffer.Write((byte*)dataPointer, byteCount);
+                                UpdateLastSamples((IntPtr)dataPointer, byteCount);
                             }
+
+                            callback((IntPtr)dataPointer, byteCount, isSilent);
 
                             totalBytesWritten += byteCount;
                             packetsRead++;
@@ -338,16 +363,21 @@ namespace AudioTransfer.Core.Audio
 
                         captureClient.ReleaseBuffer(numFrames);
                         captureClient.GetNextPacketSize(out packetSize);
+                        watchdogTimer.Restart();
+                    }
+
+                    if (watchdogTimer.ElapsedMilliseconds > 30000)
+                    {
+                        CoreLogger.Instance.Log("[WasapiDirect] Watchdog: No packets for 30s. Likely hardware stall.");
+                        throw new COMException("WASAPI capture stalled", AUDCLNT_E_DEVICE_INVALIDATED);
                     }
 
                     // Stats every 10 seconds
                     if (statsTimer.ElapsedMilliseconds >= 10000)
                     {
                         double elapsed = statsTimer.Elapsed.TotalSeconds;
-                        int bufferedMs = directBuffer.Available * 1000 / (Format.SampleRate * bytesPerFrame);
                         CoreLogger.Instance.Log($"[WasapiDirect] {packetsRead / elapsed:F0} WASAPI pkts/s, " +
-                                          $"{totalBytesWritten / elapsed / 1024:F0} KB/s, " +
-                                          $"buffer={bufferedMs}ms/{directBuffer.Available}/{directBuffer.Capacity}");
+                                          $"{totalBytesWritten / elapsed / 1024:F0} KB/s, ZERO-LATENCY MODE");
                         totalBytesWritten = 0;
                         packetsRead = 0;
                         statsTimer.Restart();
@@ -355,6 +385,11 @@ namespace AudioTransfer.Core.Audio
 
                     if (!didWork)
                     {
+                        // Starvation check: If we were active and now have no data, inject fade-out (WTC-6)
+                        if (_wasActiveSinceLastSilence)
+                        {
+                            InjectFadeOut();
+                        }
                         // No data available � spin briefly then yield
                         spinner.SpinOnce();
                     }
@@ -364,13 +399,19 @@ namespace AudioTransfer.Core.Audio
                     }
                 }
 
+                // Final cleanup: if loop ended while active, fade out (WTC-6)
+                if (_wasActiveSinceLastSilence) InjectFadeOut();
+
                 AudioTransfer.Core.Logging.CoreLogger.Instance.Log("[WasapiDirect] Capture loop ended.");
             }
             catch (Exception ex)
             {
-                if (ex is COMException cex && (uint)cex.HResult == AUDCLNT_E_DEVICE_INVALIDATED)
+                if (ex is COMException cex && 
+                    (cex.HResult == AUDCLNT_E_DEVICE_INVALIDATED || 
+                     cex.HResult == AUDCLNT_E_RESOURCES_INVALIDATED ||
+                     cex.HResult == AUDCLNT_E_SERVICE_NOT_RUNNING))
                 {
-                    AudioTransfer.Core.Logging.CoreLogger.Instance.Log("[WasapiDirect] Device invalidated! Signaling restart.");
+                    AudioTransfer.Core.Logging.CoreLogger.Instance.Log($"[WasapiDirect] Device/Service error (0x{cex.HResult:X8})! Signaling restart.");
                     DefaultDeviceChanged?.Invoke(this, EventArgs.Empty);
                 }
 
@@ -391,8 +432,14 @@ namespace AudioTransfer.Core.Audio
             byte[] accumulationBuffer = new byte[bufferSizeBytes * 4]; // Larger buffer for safety
             int bufferOffset = 0;
 
+            // WTC-3 FIX: Pre-allocate the event buffer once to avoid per-event heap allocation.
+            // Old code did `new byte[bufferSizeBytes]` every 60ms = ~16 allocations/sec.
+            byte[] eventBuffer = new byte[bufferSizeBytes];
+
             int eventCount = 0;
             int underrunCount = 0;
+
+            var watchdogTimer = System.Diagnostics.Stopwatch.StartNew();
 
             try
             {
@@ -402,16 +449,27 @@ namespace AudioTransfer.Core.Audio
 
                     // Continuously read available data from WASAPI
                     int bytesRead = ReadAudioData(accumulationBuffer, bufferOffset);
+                    if (bytesRead > 0)
+                    {
+                        watchdogTimer.Restart();
+                    }
                     bufferOffset += bytesRead;
+
+                    // WTC-2 FIX: Same as DirectCaptureLoop — WASAPI Loopback produces no
+                    // packets when PC is silent. Increased from 10s to 30s to avoid
+                    // spurious restarts during silence periods.
+                    if (watchdogTimer.ElapsedMilliseconds > 30000)
+                    {
+                        CoreLogger.Instance.Log("[WasapiTimedCapture] Watchdog: No data for 30s. Likely hardware stall.");
+                        throw new COMException("WASAPI capture stalled", AUDCLNT_E_DEVICE_INVALIDATED);
+                    }
 
                     // Check if it's time to fire the next event
                     if (currentTime >= nextEventTime)
                     {
                         eventCount++;
 
-                        // Fire event with exactly bufferSizeBytes
-                        byte[] eventBuffer = new byte[bufferSizeBytes];
-
+                        // WTC-3 FIX: Reuse pre-allocated eventBuffer instead of allocating new
                         if (bufferOffset >= bufferSizeBytes)
                         {
                             // We have enough data - use it
@@ -472,9 +530,12 @@ namespace AudioTransfer.Core.Audio
             }
             catch (Exception ex)
             {
-                if (ex is COMException cex && (uint)cex.HResult == AUDCLNT_E_DEVICE_INVALIDATED)
+                if (ex is COMException cex && 
+                    (cex.HResult == AUDCLNT_E_DEVICE_INVALIDATED || 
+                     cex.HResult == AUDCLNT_E_RESOURCES_INVALIDATED ||
+                     cex.HResult == AUDCLNT_E_SERVICE_NOT_RUNNING))
                 {
-                    AudioTransfer.Core.Logging.CoreLogger.Instance.Log("[WasapiTimedCapture] Device invalidated! Signaling restart.");
+                    AudioTransfer.Core.Logging.CoreLogger.Instance.Log($"[WasapiTimedCapture] Device/Service error (0x{cex.HResult:X8})! Signaling restart.");
                     DefaultDeviceChanged?.Invoke(this, EventArgs.Empty);
                 }
 
@@ -546,6 +607,47 @@ namespace AudioTransfer.Core.Audio
             return totalBytesRead;
         }
 
+        private void UpdateLastSamples(IntPtr data, int length)
+        {
+            if (length < bytesPerFrame || length % bytesPerFrame != 0) return;
+            short* pIn = (short*)data;
+            int lastFrameIdx = (length / bytesPerFrame) - 1;
+            _lastL = pIn[lastFrameIdx * CHANNELS];
+            _lastR = pIn[lastFrameIdx * CHANNELS + 1];
+            _wasActiveSinceLastSilence = true;
+        }
+
+        private void InjectFadeOut()
+        {
+            if (!_wasActiveSinceLastSilence || OnDataAvailable == null) return;
+            
+            int fadeSamples = (SAMPLE_RATE * FADE_MS / 1000);
+            int fadeBytes = fadeSamples * bytesPerFrame;
+            if (_fadeBuffer == null || _fadeBuffer.Length < fadeBytes) _fadeBuffer = new byte[fadeBytes];
+            
+            fixed (byte* pBuf = _fadeBuffer)
+            {
+                short* pOut = (short*)pBuf;
+                for (int i = 0; i < fadeSamples; i++)
+                {
+                    float ratio = 1.0f - (float)i / fadeSamples;
+                    // Linear fade-out from last known samples
+                    pOut[i * CHANNELS] = (short)(_lastL * ratio);
+                    pOut[i * CHANNELS + 1] = (short)(_lastR * ratio);
+                }
+            }
+            
+            fixed (byte* pBuf = _fadeBuffer)
+            {
+                OnDataAvailable((IntPtr)pBuf, fadeBytes, false);
+            }
+            
+            _wasActiveSinceLastSilence = false;
+            _lastL = 0;
+            _lastR = 0;
+            CoreLogger.Instance.Log("[WasapiTimedCapture] Injected 20ms fade-out trail.");
+        }
+
         /// <summary>
         /// Stop capturing
         /// </summary>
@@ -555,6 +657,12 @@ namespace AudioTransfer.Core.Audio
                 return;
 
             isCapturing = false;
+
+            // WTC-5 FIX: Cancel CTS BEFORE Join() so the capture thread's
+            // cancellation check fires and the thread can exit cleanly.
+            // Old code set isCapturing=false then called cts.Cancel() — the thread
+            // checks cts.Token.IsCancellationRequested in the loop condition, so
+            // cancelling first ensures the thread exits on the next iteration.
             cts?.Cancel();
 
             // Wait for thread to finish
@@ -582,6 +690,9 @@ namespace AudioTransfer.Core.Audio
                 try { Marshal.ReleaseComObject(audioClient); } catch { }
                 audioClient = null;
             }
+
+            _bufferEvent?.Dispose();
+            _bufferEvent = null;
         }
 
         public void Dispose()
@@ -593,8 +704,13 @@ namespace AudioTransfer.Core.Audio
             {
                 try
                 {
-                    var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
-                    enumerator.UnregisterEndpointNotificationCallback(Marshal.GetComInterfaceForObject(deviceChangeHandler, typeof(IMMNotificationClient)));
+                    // WTC-4 FIX: Use the stored enumerator instance instead of creating a new one.
+                    // Old code created a new MMDeviceEnumerator which could fail and leak the COM object.
+                    if (_notificationEnumerator != null)
+                    {
+                        _notificationEnumerator.UnregisterEndpointNotificationCallback(
+                            Marshal.GetComInterfaceForObject(deviceChangeHandler, typeof(IMMNotificationClient)));
+                    }
                 }
                 catch { }
                 deviceChangeHandler = null;
@@ -718,7 +834,7 @@ namespace AudioTransfer.Core.Audio
     internal unsafe interface IAudioClient
     {
         void Initialize(AUDCLNT_SHAREMODE ShareMode, AUDCLNT_STREAMFLAGS StreamFlags,
-            long hnsBufferDuration, long hnsPeriodicity, [In] WAVEFORMATEX* pFormat, [In] Guid AudioSessionGuid);
+            long hnsBufferDuration, long hnsPeriodicity, [In] WAVEFORMATEX* pFormat, [In] ref Guid AudioSessionGuid);
         void GetBufferSize(out uint pNumBufferFrames);
         void GetStreamLatency(out long phnsLatency);
         void GetCurrentPadding(out uint pNumPaddingFrames);

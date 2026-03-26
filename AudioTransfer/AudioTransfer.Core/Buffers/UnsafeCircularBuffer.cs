@@ -26,6 +26,12 @@ namespace AudioTransfer.Core.Buffers
 
         private bool _disposed;
 
+        // Fade state for Comfort Noise crossfading
+        private float _noiseFadeLevel = 0f;
+        private int _noiseCurrentOffset = 0;
+        private const float FADE_IN_STEP  = 1.0f / 4800f; // ~100ms fade in at 48kHz
+        private const float FADE_OUT_STEP = 1.0f / 2400f; // ~50ms fade out at 48kHz
+
         /// <summary>
         /// Number of bytes currently available for reading.
         /// </summary>
@@ -81,12 +87,9 @@ namespace AudioTransfer.Core.Buffers
         }
 
         /// <summary>
-        /// Write data into the circular buffer (producer side).
-        /// If the buffer is full, oldest data will be overwritten.
+        /// Write raw data into the circular buffer without processing.
         /// </summary>
-        /// <param name="data">Source data pointer</param>
-        /// <param name="length">Number of bytes to write</param>
-        public void Write(byte* data, int length)
+        private void WriteRaw(byte* data, int length)
         {
             if (length <= 0 || length > _capacity) return;
 
@@ -122,6 +125,55 @@ namespace AudioTransfer.Core.Buffers
         }
 
         /// <summary>
+        /// Write data into the circular buffer (producer side).
+        /// Handles crossfading between real audio and comfort noise.
+        /// If the buffer is full, oldest data will be overwritten.
+        /// </summary>
+        /// <param name="data">Source data pointer</param>
+        /// <param name="length">Number of bytes to write</param>
+        public void Write(byte* data, int length)
+        {
+            if (length <= 0 || length > _capacity) return;
+
+            if (_noiseFadeLevel > 0f)
+            {
+                // We must fade OUT the comfort noise and fade IN the real audio
+                int numSamples = length / 2;
+                short* tempBuf = stackalloc short[numSamples];
+                short* sData = (short*)data;
+                
+                fixed (byte* pNoise = _noiseBlock)
+                {
+                    short* sNoise = (short*)pNoise;
+                    for (int i = 0; i < numSamples; i++)
+                    {
+                        float audioFade = 1.0f - _noiseFadeLevel;
+                        short noiseSample = 0;
+
+                        if (_noiseFadeLevel > 0f)
+                        {
+                            _noiseCurrentOffset = (_noiseCurrentOffset + 1) % (_noiseBlock.Length / 2);
+                            noiseSample = (short)(sNoise[_noiseCurrentOffset] * _noiseFadeLevel);
+                            
+                            _noiseFadeLevel -= FADE_OUT_STEP;
+                            if (_noiseFadeLevel < 0f) _noiseFadeLevel = 0f;
+                        }
+
+                        // Mix incoming audio with fading out noise
+                        float mixed = sData[i] * audioFade + noiseSample;
+                        tempBuf[i] = (short)Math.Clamp(mixed, short.MinValue, short.MaxValue);
+                    }
+                }
+                
+                WriteRaw((byte*)tempBuf, length);
+            }
+            else
+            {
+                WriteRaw(data, length);
+            }
+        }
+
+        /// <summary>
         /// Write data from a managed byte array into the circular buffer.
         /// </summary>
         public void Write(byte[] data, int offset, int length)
@@ -131,6 +183,32 @@ namespace AudioTransfer.Core.Buffers
             fixed (byte* src = &data[offset])
             {
                 Write(src, length);
+            }
+        }
+
+        // Shared zero block for WriteZeros — allocated once, never written to.
+        private static readonly byte[] _zeroBlock = new byte[65536];
+
+        // Shared random block for comfort noise — filled once.
+        private static readonly byte[] _noiseBlock = new byte[65536];
+
+        /// <summary>
+        /// Write 'count' zero bytes into the circular buffer.
+        /// Uses a shared static zero block to avoid any per-call allocation.
+        /// </summary>
+        public void WriteZeros(int count)
+        {
+            if (count <= 0 || count > _capacity) return;
+
+            fixed (byte* zeros = _zeroBlock)
+            {
+                int remaining = count;
+                while (remaining > 0)
+                {
+                    int chunk = Math.Min(remaining, _zeroBlock.Length);
+                    Write(zeros, chunk);
+                    remaining -= chunk;
+                }
             }
         }
 

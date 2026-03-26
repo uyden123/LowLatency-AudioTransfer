@@ -25,7 +25,7 @@ public class WaveformView extends View {
     }
 
     private void init() {
-        color = ContextCompat.getColor(getContext(), R.color.primary_green);
+        color = ContextCompat.getColor(getContext(), R.color.primary_blue);
         paint.setColor(color);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(4f);
@@ -35,12 +35,11 @@ public class WaveformView extends View {
     }
 
     public synchronized void updateSamples(short[] newSamples) {
-        // Deep copy interested part or keep reference if we know it won't change immediately
-        // For visualizers, a reference is usually okay if we draw fast enough, but copy is safer.
         if (newSamples == null || newSamples.length == 0) return;
         
-        // Downsample for performance if needed, but for 960 samples (20ms) it's fine.
-        this.samples = new short[newSamples.length];
+        if (this.samples == null || this.samples.length != newSamples.length) {
+            this.samples = new short[newSamples.length];
+        }
         System.arraycopy(newSamples, 0, this.samples, 0, newSamples.length);
         postInvalidateOnAnimation();
     }
@@ -67,7 +66,8 @@ public class WaveformView extends View {
         float lastY = midY;
         path.moveTo(0, midY);
 
-        for (int i = 0; i < width; i++) {
+        // Down-sample for performance: draw every 2 pixels
+        for (int i = 0; i < width; i += 2) {
             int sampleIdx = i * step;
             if (sampleIdx >= samples.length) break;
 

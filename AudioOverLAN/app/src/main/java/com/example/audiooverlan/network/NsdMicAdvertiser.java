@@ -25,15 +25,13 @@ public class NsdMicAdvertiser {
     private NsdManager.RegistrationListener registrationListener;
     private volatile boolean isRegistered = false;
     private String registeredName;
-    private final int port;
+    private final int PORT = 5353;
 
     /**
      * @param context Application context
-     * @param port    UDP port the mic service is sending FROM (used by PC to know where to listen back)
      */
-    public NsdMicAdvertiser(Context context, int port) {
+    public NsdMicAdvertiser(Context context) {
         this.context = context.getApplicationContext();
-        this.port = port;
     }
 
     public void start() {
@@ -51,7 +49,7 @@ public class NsdMicAdvertiser {
         NsdServiceInfo serviceInfo = new NsdServiceInfo();
         serviceInfo.setServiceName(SERVICE_NAME);
         serviceInfo.setServiceType(SERVICE_TYPE);
-        serviceInfo.setPort(port);
+        serviceInfo.setPort(PORT);
         
         // Add human-readable device name to TXT record
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -65,7 +63,7 @@ public class NsdMicAdvertiser {
                 registeredName = info.getServiceName();
                 isRegistered = true;
                 Log.i(TAG, "Service registered: " + registeredName
-                        + " type=" + SERVICE_TYPE + " port=" + port);
+                        + " type=" + SERVICE_TYPE + " port=" + PORT);
             }
 
             @Override
@@ -88,7 +86,7 @@ public class NsdMicAdvertiser {
 
         try {
             nsdManager.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, registrationListener);
-            Log.i(TAG, "Registering service: " + SERVICE_NAME + " type=" + SERVICE_TYPE + " port=" + port);
+            Log.i(TAG, "Registering service: " + SERVICE_NAME + " type=" + SERVICE_TYPE + " port=" + PORT);
         } catch (Exception e) {
             Log.e(TAG, "Failed to register NSD service", e);
         }

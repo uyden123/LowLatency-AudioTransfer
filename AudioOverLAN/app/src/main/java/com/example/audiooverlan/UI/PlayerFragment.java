@@ -2,10 +2,14 @@ package com.example.audiooverlan.UI;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.transition.AutoTransition;
+import android.transition.Transition;
+import android.transition.TransitionManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,10 +24,15 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+
+import com.example.audiooverlan.viewmodels.PlayerViewModel;
+import com.example.audiooverlan.viewmodels.PlayerState;
 
 import com.example.audiooverlan.services.AudioService;
 import com.example.audiooverlan.network.NsdDiscoveryManager;
 import com.example.audiooverlan.R;
+import com.example.audiooverlan.utils.SettingsRepository;
 import com.example.audiooverlan.utils.Utils;
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -36,10 +45,6 @@ import java.util.Set;
 
 public class PlayerFragment extends Fragment {
 
-    private static final String PREFS_NAME = "AudioOverLAN_Prefs";
-    private static final String KEY_HISTORY_IPS = "history_ips";
-    private static final String KEY_JITTER_TARGET = "jitter_target";
-    private static final String KEY_JITTER_MAX = "jitter_max";
     public static final String KEY_AUTO_CONNECT = "auto_connect";
     private static final int MAX_HISTORY = 5;
 
@@ -49,23 +54,19 @@ public class PlayerFragment extends Fragment {
      */
     public static volatile boolean autoConnectSuppressed = false;
 
-    private Button btnConnect;
+    private com.google.android.material.button.MaterialButton btnConnect;
     private ImageButton btnRefresh;
     private ProgressBar scanProgressBar;
     private TextInputEditText etIPAddress;
+    private TextView tvIPError;
     private LinearLayout serverListContainer;
-    private TextView tvNoServers;
-    private TextView txtStatus;
+    private View layoutSearchingPlaceholder;
+    private PlayerViewModel viewModel;
+    private com.google.android.material.button.MaterialButtonToggleGroup engineToggleGroup;
+    private com.google.android.material.button.MaterialButton btnMediaPlayback, btnAAudio;
+    private boolean isNavigatingToConnected = false;
 
-    private final Set<String> discoveredServers = new HashSet<>();
-    private final Handler statusHandler = new Handler(Looper.getMainLooper());
-    private final Runnable statusRunnable = new Runnable() {
-        @Override
-        public void run() {
-            updateButtonState();
-            statusHandler.postDelayed(this, 1000);
-        }
-    };
+    private final java.util.Map<String, String> discoveredServers = new java.util.HashMap<>();
 
     // mDNS/NSD discovery
     private NsdDiscoveryManager nsdDiscoveryManager;
@@ -80,9 +81,38 @@ public class PlayerFragment extends Fragment {
         btnRefresh = view.findViewById(R.id.btnRefresh);
         scanProgressBar = view.findViewById(R.id.scanProgressBar);
         etIPAddress = view.findViewById(R.id.etIPAddress);
+        tvIPError = view.findViewById(R.id.tvIPError);
         serverListContainer = view.findViewById(R.id.serverListContainer);
-        tvNoServers = view.findViewById(R.id.tvNoServers);
-        txtStatus = view.findViewById(R.id.txtStatus);
+        layoutSearchingPlaceholder = view.findViewById(R.id.layoutSearchingPlaceholder);
+        engineToggleGroup = view.findViewById(R.id.engineToggleGroup);
+        btnMediaPlayback = view.findViewById(R.id.btnMediaPlayback);
+        btnAAudio = view.findViewById(R.id.btnAAudio);
+
+        viewModel = new ViewModelProvider(this).get(PlayerViewModel.class);
+        observePlayerState();
+
+        SettingsRepository repo = SettingsRepository.getInstance(requireContext());
+        if (repo.isAaudioEnabled()) {
+            engineToggleGroup.check(R.id.btnAAudio);
+        } else {
+            engineToggleGroup.check(R.id.btnMediaPlayback);
+        }
+
+        engineToggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (isChecked) {
+                if (checkedId == R.id.btnAAudio) {
+                    repo.setAaudioEnabled(true);
+                } else if (checkedId == R.id.btnMediaPlayback) {
+                    repo.setAaudioEnabled(false);
+                }
+            }
+        });
+
+        com.google.android.material.switchmaterial.SwitchMaterial switchAutoConnect = view.findViewById(R.id.switchAutoConnect);
+        switchAutoConnect.setChecked(repo.isAutoConnect());
+        switchAutoConnect.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            repo.setAutoConnect(isChecked);
+        });
 
         loadLastIp();
 
@@ -97,21 +127,68 @@ public class PlayerFragment extends Fragment {
         // Start mDNS/NSD discovery
         startNsdDiscovery();
 
-        // Proactive one-time auto-connect attempt on app start
-        if (!proactiveAttemptDone && !AudioService.isServiceRunning && isAutoConnectEnabled() && !autoConnectSuppressed) {
-            String lastIp = getLastConnectedIp();
-            if (lastIp != null && !lastIp.isEmpty()) {
-                proactiveAttemptDone = true;
-                etIPAddress.setText(lastIp);
-                // Small delay to ensure everything is ready
-                new Handler(Looper.getMainLooper()).postDelayed(this::startAudioService, 500);
+
+        etIPAddress.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (tvIPError.getVisibility() == View.VISIBLE) {
+                    Transition fast = new AutoTransition().setDuration(150);
+                    TransitionManager.beginDelayedTransition((ViewGroup) tvIPError.getParent().getParent(), fast);
+                    tvIPError.setVisibility(View.GONE);
+                }
             }
-        }
+            @Override public void afterTextChanged(Editable s) {}
+        });
 
         return view;
     }
 
-    private static boolean proactiveAttemptDone = false;
+    private void updateBufferingConfig() {
+        SettingsRepository repo = SettingsRepository.getInstance(requireContext());
+        int modeIdx = repo.getBufferMode();
+        com.example.audiooverlan.audio.JitterBuffer.BufferMode mode = com.example.audiooverlan.audio.JitterBuffer.BufferMode.values()[modeIdx];
+        AudioService.setBufferingConfig(mode, repo.getBufferCustomMinMs(), repo.getBufferCustomMaxMs());
+    }
+
+    private void observePlayerState() {
+        viewModel.getPlayerState().observe(getViewLifecycleOwner(), state -> {
+            if (!isAdded()) return;
+
+            if (state instanceof PlayerState.Idle || state instanceof PlayerState.Disconnected) {
+                updateUIForDisconnected();
+                isNavigatingToConnected = false;
+            } else if (state instanceof PlayerState.Connecting) {
+                updateUIForConnecting(((PlayerState.Connecting) state).ip);
+            } else if (state instanceof PlayerState.Playing) {
+                updateUIForConnected();
+                handleNavigationToConnected(((PlayerState.Playing) state).ip);
+            }
+        });
+    }
+
+    private void updateUIForDisconnected() {
+        if (!isAdded()) return;
+        btnConnect.setEnabled(true);
+        // Status labels removed as per request
+    }
+
+    private void updateUIForConnecting(String ip) {
+        if (!isAdded()) return;
+        btnConnect.setEnabled(false);
+    }
+
+    private void updateUIForConnected() {
+        if (!isAdded()) return;
+        btnConnect.setEnabled(false);
+    }
+
+    private void handleNavigationToConnected(String ip) {
+        if (!isNavigatingToConnected && getActivity() instanceof MainActivity) {
+            isNavigatingToConnected = true;
+            ((MainActivity) getActivity()).onConnectionStateChanged(ip);
+        }
+    }
+
 
     // ================================================================
     //  mDNS/NSD Discovery (replaces legacy UDP broadcast)
@@ -128,11 +205,13 @@ public class PlayerFragment extends Fragment {
         nsdDiscoveryManager = new NsdDiscoveryManager(requireContext());
         nsdDiscoveryManager.setListener(new NsdDiscoveryManager.OnServerDiscoveredListener() {
             @Override
-            public void onServerDiscovered(String ip, int port) {
+            public void onServerDiscovered(String name, String ip, int port) {
                 if (!isAdded()) return;
 
                 // Add to discovered server list for UI
-                if (discoveredServers.add(ip)) {
+                boolean isNew = !discoveredServers.containsKey(ip);
+                discoveredServers.put(ip, name);
+                if (isNew) {
                     updateServerList();
                 }
 
@@ -144,9 +223,6 @@ public class PlayerFragment extends Fragment {
                 if (!AudioService.isServiceRunning && isAutoConnectEnabled() && !autoConnectSuppressed) {
                     String lastIp = getLastConnectedIp();
                     if (ip.equals(lastIp)) {
-                        txtStatus.setText("Auto-reconnecting to " + ip + "...");
-                        txtStatus.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_blue_dark));
-
                         etIPAddress.setText(ip);
                         startAudioServiceWithParams(ip, port);
                     }
@@ -189,38 +265,15 @@ public class PlayerFragment extends Fragment {
 
     private boolean isAutoConnectEnabled() {
         if (!isAdded()) return false;
-        SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        return prefs.getBoolean(KEY_AUTO_CONNECT, true); // default ON
+        return SettingsRepository.getInstance(requireContext()).isAutoConnect();
     }
 
     // ================================================================
     //  Status / UI
     // ================================================================
 
-    private void updateButtonState() {
-        if (!isAdded()) return;
-        if (AudioService.isServiceRunning) {
-            if (AudioService.isConnectedToProcessor()) {
-                txtStatus.setText("Status: Connected");
-                txtStatus.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_green_dark));
-            } else {
-                txtStatus.setText("Status: Searching for Server...");
-                txtStatus.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_orange_dark));
-            }
-        } else {
-            if (nsdDiscoveryManager != null && nsdDiscoveryManager.isDiscovering()) {
-                if (autoConnectSuppressed || !isAutoConnectEnabled()) {
-                    txtStatus.setText("Status: Scanning (manual mode)");
-                } else {
-                    txtStatus.setText("Status: Scanning (auto-connect)...");
-                }
-                txtStatus.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_blue_dark));
-            } else {
-                txtStatus.setText("Status: Disconnected");
-                txtStatus.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray));
-            }
-        }
-    }
+    // Removed updateButtonState as it is replaced by LiveData observation
+
 
     // ================================================================
     //  Audio Service
@@ -228,12 +281,17 @@ public class PlayerFragment extends Fragment {
 
     private void startAudioService() {
         String sIPAddress = Objects.requireNonNull(etIPAddress.getText()).toString().trim();
+        Transition fast = new AutoTransition().setDuration(150);
         if (sIPAddress.isEmpty()) {
-            Toast.makeText(getContext(), "Vui lòng nhập địa chỉ IP", Toast.LENGTH_SHORT).show();
+            TransitionManager.beginDelayedTransition((ViewGroup) tvIPError.getParent().getParent(), fast);
+            tvIPError.setText("Vui lòng nhập địa chỉ IP");
+            tvIPError.setVisibility(View.VISIBLE);
             return;
         }
         if (!Utils.isValidIPv4(sIPAddress)) {
-            Toast.makeText(getContext(), "Địa chỉ IP đã nhập không hợp lệ", Toast.LENGTH_SHORT).show();
+            TransitionManager.beginDelayedTransition((ViewGroup) tvIPError.getParent().getParent(), fast);
+            tvIPError.setText("Địa chỉ IP không hợp lệ");
+            tvIPError.setVisibility(View.VISIBLE);
             return;
         }
         startAudioServiceWithParams(sIPAddress, 5000);
@@ -244,64 +302,51 @@ public class PlayerFragment extends Fragment {
 
         saveIpToHistory(ip);
 
-        SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        int target = prefs.getInt(KEY_JITTER_TARGET, 60);
-        int max = prefs.getInt(KEY_JITTER_MAX, 120);
-
-        // Update state immediately for UX
         AudioService.isServiceRunning = true;
 
         Intent serviceIntent = new Intent(getContext(), AudioService.class);
         serviceIntent.putExtra("IP_ADDRESS", ip);
         serviceIntent.putExtra("PORT", port);
-        serviceIntent.putExtra("JITTER_TARGET", target);
-        serviceIntent.putExtra("JITTER_MAX", max);
-        serviceIntent.putExtra("EXCLUSIVE_MODE", prefs.getBoolean("exclusive_audio", false));
-        serviceIntent.putExtra("USE_AAUDIO", prefs.getBoolean("aaudio_enabled", false));
         ContextCompat.startForegroundService(requireContext(), serviceIntent);
 
         // Show connecting state
         btnConnect.setEnabled(false);
-        txtStatus.setText("Connecting to " + ip + "...");
-        txtStatus.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_orange_light));
 
-        // Poll for actual server response before navigating
+        // Timeout logic for connection attempt (local to this request)
         final long connectStartTime = System.currentTimeMillis();
-        final int CONNECT_TIMEOUT_MS = 2000;
+        final int CONNECT_TIMEOUT_MS = 2500;
 
-        Handler connectHandler = new Handler(Looper.getMainLooper());
-        connectHandler.postDelayed(new Runnable() {
+        Handler timeoutHandler = new Handler(Looper.getMainLooper());
+        timeoutHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 if (!isAdded()) return;
 
-                if (AudioService.hasServerResponded()) {
-                    // Server responded — navigate to ConnectedFragment
-                    btnConnect.setEnabled(true);
-                    if (getActivity() instanceof MainActivity) {
-                        ((MainActivity) getActivity()).onConnectionStateChanged(ip);
-                    }
-                } else if (System.currentTimeMillis() - connectStartTime < CONNECT_TIMEOUT_MS) {
-                    // Still waiting — poll again
-                    connectHandler.postDelayed(this, 500);
+                PlayerState currentInfo = viewModel.getPlayerState().getValue();
+                
+                // If we are already playing or idle (stopped), don't trigger timeout
+                if (currentInfo instanceof PlayerState.Playing || currentInfo instanceof PlayerState.Idle || currentInfo instanceof PlayerState.Disconnected) {
+                    return;
+                }
+
+                if (System.currentTimeMillis() - connectStartTime < CONNECT_TIMEOUT_MS) {
+                    timeoutHandler.postDelayed(this, 500);
                 } else {
-                    // Timeout — no server response
+                    // Actual Timeout
                     btnConnect.setEnabled(true);
-                    txtStatus.setText("Không tìm thấy server tại " + ip);
-                    txtStatus.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_light));
-                    Toast.makeText(getContext(), "Không tìm thấy server. Kiểm tra IP và thử lại.", Toast.LENGTH_LONG).show();
+                    Transition fast = new AutoTransition().setDuration(150);
+                    TransitionManager.beginDelayedTransition((ViewGroup) tvIPError.getParent().getParent(), fast);
+                    tvIPError.setText("Không tìm thấy server");
+                    tvIPError.setVisibility(View.VISIBLE);
                     
-                    // "Forget it" - suppress future auto-connects for this session
                     autoConnectSuppressed = true;
 
                     // Stop the service
-                    AudioService.isServiceRunning = false;
-                    AudioService.connectedIp = null;
                     Intent stopIntent = new Intent(getContext(), AudioService.class);
                     if (getContext() != null) getContext().stopService(stopIntent);
                 }
             }
-        }, 500);
+        }, 1000);
     }
 
     // ================================================================
@@ -310,16 +355,25 @@ public class PlayerFragment extends Fragment {
 
     private void updateServerList() {
         if (!isAdded()) return;
+        
+        Transition fast = new AutoTransition().setDuration(150);
+        TransitionManager.beginDelayedTransition(serverListContainer, fast);
         serverListContainer.removeAllViews();
+        
         if (discoveredServers.isEmpty()) {
-            tvNoServers.setVisibility(View.VISIBLE);
+            layoutSearchingPlaceholder.setVisibility(View.VISIBLE);
+            serverListContainer.addView(layoutSearchingPlaceholder);
         } else {
-            tvNoServers.setVisibility(View.GONE);
+            layoutSearchingPlaceholder.setVisibility(View.GONE);
             LayoutInflater inflater = LayoutInflater.from(requireContext());
-            for (String ip : discoveredServers) {
+            for (java.util.Map.Entry<String, String> entry : discoveredServers.entrySet()) {
+                String ip = entry.getKey();
+                String name = entry.getValue();
                 View serverView = inflater.inflate(R.layout.item_server, serverListContainer, false);
                 TextView tvInfo = serverView.findViewById(R.id.tvServerInfo);
-                tvInfo.setText("SERVER (" + ip + ")");
+                TextView tvStatus = serverView.findViewById(R.id.tvStatus);
+                tvInfo.setText(name);
+                tvStatus.setText("READY"); // For now, assume ready
                 serverView.setOnClickListener(v -> {
                     etIPAddress.setText(ip);
                     if (!AudioService.isServiceRunning) {
@@ -344,8 +398,7 @@ public class PlayerFragment extends Fragment {
 
     private String getLastConnectedIp() {
         if (!isAdded()) return null;
-        SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String savedIps = prefs.getString(KEY_HISTORY_IPS, "");
+        String savedIps = SettingsRepository.getInstance(requireContext()).getHistoryIps();
         if (!savedIps.isEmpty()) {
             return savedIps.split(",")[0];
         }
@@ -353,8 +406,8 @@ public class PlayerFragment extends Fragment {
     }
 
     private void saveIpToHistory(String ip) {
-        SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String savedIps = prefs.getString(KEY_HISTORY_IPS, "");
+        SettingsRepository repo = SettingsRepository.getInstance(requireContext());
+        String savedIps = repo.getHistoryIps();
         List<String> history = new ArrayList<>(Arrays.asList(savedIps.split(",")));
         history.remove("");
         history.remove(ip);
@@ -365,7 +418,7 @@ public class PlayerFragment extends Fragment {
             sb.append(history.get(i));
             if (i < history.size() - 1) sb.append(",");
         }
-        prefs.edit().putString(KEY_HISTORY_IPS, sb.toString()).apply();
+        repo.setHistoryIps(sb.toString());
     }
 
     // ================================================================
@@ -375,7 +428,6 @@ public class PlayerFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        statusHandler.post(statusRunnable);
         if (!nsdStarted) {
             startNsdDiscovery();
         }
@@ -384,7 +436,6 @@ public class PlayerFragment extends Fragment {
     @Override
     public void onPause() {
         super.onPause();
-        statusHandler.removeCallbacks(statusRunnable);
     }
 
     @Override

@@ -6,7 +6,7 @@
         android:title="Player" />
     <item
         android:id="@+id/nav_server"
-        android:icon="@drawable/ic_computer"
+        android:icon="@drawable/ic_broadcast"
         android:title="Server" />
     <item
         android:id="@+id/nav_settings"

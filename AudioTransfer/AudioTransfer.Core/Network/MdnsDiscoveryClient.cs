@@ -53,12 +53,12 @@ namespace AudioTransfer.Core.Network
 
             try
             {
-                _udpClient = new UdpClient();
-                _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                _udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, MdnsPort));
-                _udpClient.JoinMulticastGroup(MdnsMulticastAddress);
+                // Ensure firewall is open for mDNS
+                FirewallHelper.AllowUdpPort(MdnsPort, "mDNS_Discovery");
 
-                CoreLogger.Instance.Log($"[mDNS-Discovery] Started looking for '{_serviceDnsName}'");
+                JoinMulticastOnAllInterfaces();
+
+                CoreLogger.Instance.Log($"[mDNS-Discovery] Started looking for '{_serviceDnsName}' on port {MdnsPort}");
             }
             catch (Exception ex)
             {
@@ -122,6 +122,7 @@ namespace AudioTransfer.Core.Network
             {
                 var packet = BuildQueryPacket();
                 var endpoint = new IPEndPoint(MdnsMulticastAddress, MdnsPort);
+                //CoreLogger.Instance.Log($"[mDNS-Discovery] Sending query for {_serviceDnsName}...");
                 _udpClient?.Send(packet, packet.Length, endpoint);
             }
             catch (Exception ex)
@@ -139,6 +140,8 @@ namespace AudioTransfer.Core.Network
                     var remoteEp = new IPEndPoint(IPAddress.Any, 0);
                     var data = _udpClient?.Receive(ref remoteEp);
                     if (data == null || data.Length < 12) continue;
+                    
+                    //CoreLogger.Instance.Log($"[mDNS-Discovery] Received {data.Length} bytes from {remoteEp}");
 
                     // Parse DNS header
                     int flags = (data[2] << 8) | data[3];
@@ -246,13 +249,19 @@ namespace AudioTransfer.Core.Network
                     // If we found a matching service with enough info, notify
                     if (matchesOurService && ipAddress != null && servicePort > 0)
                     {
+                        //CoreLogger.Instance.Log($"[mDNS-Discovery] Match found! Instance: {instanceName}, IP: {ipAddress}, Port: {servicePort}");
                         HandleServiceDiscovered(instanceName ?? "Unknown", ipAddress.ToString(), servicePort, displayName);
                     }
                     else if (matchesOurService && hostname != null && servicePort > 0)
                     {
                         // We got hostname and port but no A record in this packet
                         // Try to resolve from remoteEp
+                        CoreLogger.Instance.Log($"[mDNS-Discovery] Partial match (SRV only)! Resolved IP: {remoteEp.Address}");
                         HandleServiceDiscovered(instanceName ?? "Unknown", remoteEp.Address.ToString(), servicePort, displayName);
+                    }
+                    else if (matchesOurService)
+                    {
+                        CoreLogger.Instance.Log($"[mDNS-Discovery] Found service {instanceName} but missing IP ({ipAddress}) or Port ({servicePort})");
                     }
                 }
                 catch (SocketException) { if (!_running) break; }
@@ -306,6 +315,59 @@ namespace AudioTransfer.Core.Network
                     CoreLogger.Instance.Log($"[mDNS-Discovery] Service lost: {svc.InstanceName} at {svc.IPAddress}:{svc.Port}");
                     OnServiceLost?.Invoke(this, svc.IPAddress);
                 }
+            }
+        }
+
+        private void JoinMulticastOnAllInterfaces()
+        {
+            try
+            {
+                _udpClient = new UdpClient();
+                _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                // On Windows, the OS-native mDNS often holds 5353. JoinMulticastGroup works better 
+                // if we bind to Any:5353 with ReuseAddress.
+                _udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, MdnsPort));
+                _udpClient.Client.ReceiveTimeout = 2000;
+
+                var interfaces = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces();
+                int joinedCount = 0;
+
+                foreach (var ni in interfaces)
+                {
+                    if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
+                    if (ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
+
+                    var props = ni.GetIPProperties();
+                    if (props == null) continue;
+
+                    foreach (var ip in props.UnicastAddresses)
+                    {
+                        if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
+                        {
+                            try
+                            {
+                                _udpClient.JoinMulticastGroup(MdnsMulticastAddress, ip.Address);
+                                joinedCount++;
+                            }
+                            catch { }
+                        }
+                    }
+                }
+                
+                if (joinedCount == 0)
+                {
+                    // Fallback to default
+                    _udpClient.JoinMulticastGroup(MdnsMulticastAddress);
+                    CoreLogger.Instance.Log("[mDNS-Discovery] Joined multicast on default interface.");
+                }
+                else
+                {
+                    CoreLogger.Instance.Log($"[mDNS-Discovery] Joined multicast on {joinedCount} interfaces.");
+                }
+            }
+            catch (Exception ex)
+            {
+                CoreLogger.Instance.LogError("[mDNS-Discovery] JoinMulticast error", ex);
             }
         }
 

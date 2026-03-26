@@ -21,30 +21,8 @@ namespace AudioTransfer.Core.Models
 
         // Audio Settings
         public bool AutoMute { get; set; } = false;
+        public string? LastServerDeviceId { get; set; }
+        public string? LastPlayerDeviceId { get; set; }
 
-        private const string DefaultConfigFile = "player_config.json";
-
-        public static async Task<PlayerConfig> LoadOrDefaultAsync(string path = DefaultConfigFile)
-        {
-            if (File.Exists(path))
-            {
-                try
-                {
-                    var json = await File.ReadAllTextAsync(path);
-                    return JsonSerializer.Deserialize<PlayerConfig>(json) ?? new PlayerConfig();
-                }
-                catch
-                {
-                    return new PlayerConfig();
-                }
-            }
-            return new PlayerConfig();
-        }
-
-        public async Task SaveAsync(string path = DefaultConfigFile)
-        {
-            var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(path, json);
-        }
     }
 }

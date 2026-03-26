@@ -24,14 +24,41 @@ import io.github.jaredmdobson.concentus.OpusSignal;
 public class OpusCodec {
     private static final String TAG = "OpusCodec";
 
+    static {
+        try {
+            System.loadLibrary("audiooverlan");
+        } catch (UnsatisfiedLinkError e) {
+            Log.e(TAG, "Failed to load audiooverlan native library", e);
+        }
+    }
+
+    // ── Native methods ──
+    private native long nativeDecoderCreate(int sampleRate, int channels);
+    private native int nativeDecoderDecode(long decoderPtr, byte[] opusData, int length, short[] outPcm, int frameSizeSamples, boolean fec);
+    private native void nativeDecoderReset(long decoderPtr);
+    private native void nativeDecoderDestroy(long decoderPtr);
+
+    private native long nativeEncoderCreate(int sampleRate, int channels, int application);
+    private native int nativeEncoderEncode(long encoderPtr, short[] pcmData, int offset, int frameSizeSamples, byte[] outOpus);
+    private native void nativeEncoderSetBitrate(long encoderPtr, int bitrate);
+    private native void nativeEncoderSetComplexity(long encoderPtr, int complexity);
+    private native void nativeEncoderSetFEC(long encoderPtr, boolean useFEC);
+    private native void nativeEncoderSetDTX(long encoderPtr, boolean useDTX);
+    private native void nativeEncoderReset(long encoderPtr);
+    private native void nativeEncoderDestroy(long encoderPtr);
+
     // ── Codec instances ──
     private OpusEncoder encoder;
     private OpusDecoder decoder;
+    private long nativeEncoderPtr = 0;
+    private long nativeDecoderPtr = 0;
+    private boolean useNativeEncoder = false;
+    private boolean useNativeDecoder = false;
 
     // ── Configuration ──
     private final int sampleRate;
     private final int channels;
-    private final int frameSizeMs;
+    private final float frameSizeMs;
     private final int frameSizeSamples;     // samples per channel per frame
     private final int frameSizeInterleaved; // total samples per frame (frameSizeSamples * channels)
 
@@ -67,9 +94,9 @@ public class OpusCodec {
      *
      * @param sampleRate  Sample rate (48000 recommended for Opus)
      * @param channels    Number of channels (1=mono, 2=stereo)
-     * @param frameSizeMs Frame duration in ms (20 recommended)
+     * @param frameSizeMs Frame duration in ms (5.0 recommended)
      */
-    public OpusCodec(int sampleRate, int channels, int frameSizeMs) {
+    public OpusCodec(int sampleRate, int channels, float frameSizeMs) {
         this(sampleRate, channels, frameSizeMs, 128000, 10, true, false);
     }
 
@@ -84,12 +111,12 @@ public class OpusCodec {
      * @param enableFEC   Enable Forward Error Correction
      * @param enableDTX   Enable Discontinuous Transmission
      */
-    public OpusCodec(int sampleRate, int channels, int frameSizeMs,
+    public OpusCodec(int sampleRate, int channels, float frameSizeMs,
                      int bitrate, int complexity, boolean enableFEC, boolean enableDTX) {
         this.sampleRate = sampleRate;
         this.channels = channels;
         this.frameSizeMs = frameSizeMs;
-        this.frameSizeSamples = sampleRate * frameSizeMs / 1000;
+        this.frameSizeSamples = (int) (sampleRate * frameSizeMs / 1000.0f);
         this.frameSizeInterleaved = frameSizeSamples * channels;
         this.bitrate = bitrate;
         this.complexity = complexity;
@@ -112,16 +139,31 @@ public class OpusCodec {
      */
     public boolean initDecoder() {
         try {
-            decoder = new OpusDecoder(sampleRate, channels);
-            decoderInitialized = true;
-            Log.i(TAG, "Decoder initialized: " + sampleRate + "Hz, " + channels + "ch, "
-                    + frameSizeMs + "ms frames");
-            return true;
-        } catch (OpusException e) {
-            Log.e(TAG, "Failed to initialize decoder: " + e.getMessage(), e);
-            decoderInitialized = false;
-            return false;
+            nativeDecoderPtr = nativeDecoderCreate(sampleRate, channels);
+            if (nativeDecoderPtr != 0) {
+                useNativeDecoder = true;
+                decoderInitialized = true;
+                Log.i(TAG, "Native Decoder initialized");
+                return true;
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Native decoder init failed, falling back to Concentus", t);
         }
+        decoderInitialized = false;
+        return false;
+
+        // try {
+        //     useNativeDecoder = false;
+        //     decoder = new OpusDecoder(sampleRate, channels);
+        //     decoderInitialized = true;
+        //     Log.i(TAG, "Concentus Decoder initialized: " + sampleRate + "Hz, " + channels + "ch, "
+        //             + frameSizeMs + "ms frames");
+        //     return true;
+        // } catch (OpusException e) {
+        //     Log.e(TAG, "Failed to initialize decoder: " + e.getMessage(), e);
+        //     decoderInitialized = false;
+        //     return false;
+        // }
     }
 
     /**
@@ -133,36 +175,52 @@ public class OpusCodec {
      * @return decoded PCM samples (short[]), or null on error
      */
     public short[] decode(byte[] opusData, int offset, int length) {
-        if (!decoderInitialized || decoder == null) {
+        if (!decoderInitialized) {
             Log.w(TAG, "Decoder not initialized");
             return null;
         }
 
         try {
-            int samplesDecoded;
+            int samplesDecoded = -1;
 
-            if (opusData == null || length <= 0) {
-                // ── PLC (Packet Loss Concealment) ──
-                // Pass null to Concentus decoder to generate concealment audio
-                samplesDecoded = decoder.decode(null, 0, 0, decodeBuffer, 0, frameSizeSamples, false);
-                plcFrames++;
-                lastPacketWasLost = true;
-            } else {
-                // ── Normal decode or FEC recovery ──
-                if (lastPacketWasLost && enableFEC) {
-                    // Try to decode with FEC first (recovers from previous lost packet)
-                    try {
-                        decoder.decode(opusData, offset, length, decodeBuffer, 0, frameSizeSamples, true);
-                        fecFrames++;
-                    } catch (OpusException e) {
-                        // FEC decode failed, just do normal decode
-                        Log.d(TAG, "FEC decode failed, using normal decode");
+            if (useNativeDecoder) {
+                byte[] inOpus = null;
+                if (opusData != null && length > 0) {
+                    if (offset == 0) {
+                        inOpus = opusData;
+                    } else {
+                        inOpus = new byte[length];
+                        System.arraycopy(opusData, offset, inOpus, 0, length);
                     }
                 }
-
-                // Normal decode
-                samplesDecoded = decoder.decode(opusData, offset, length, decodeBuffer, 0, frameSizeSamples, false);
-                lastPacketWasLost = false;
+                
+                if (inOpus == null) {
+                    samplesDecoded = nativeDecoderDecode(nativeDecoderPtr, null, 0, decodeBuffer, frameSizeSamples, false);
+                    plcFrames++;
+                    lastPacketWasLost = true;
+                } else {
+                    if (lastPacketWasLost && enableFEC) {
+                         nativeDecoderDecode(nativeDecoderPtr, inOpus, length, decodeBuffer, frameSizeSamples, true);
+                         fecFrames++;
+                    }
+                    samplesDecoded = nativeDecoderDecode(nativeDecoderPtr, inOpus, length, decodeBuffer, frameSizeSamples, false);
+                    lastPacketWasLost = false;
+                }
+            } else {
+                if (opusData == null || length <= 0) {
+                    samplesDecoded = decoder.decode(null, 0, 0, decodeBuffer, 0, frameSizeSamples, false);
+                    plcFrames++;
+                    lastPacketWasLost = true;
+                } else {
+                    if (lastPacketWasLost && enableFEC) {
+                        try {
+                            decoder.decode(opusData, offset, length, decodeBuffer, 0, frameSizeSamples, true);
+                            fecFrames++;
+                        } catch (OpusException ignored) {}
+                    }
+                    samplesDecoded = decoder.decode(opusData, offset, length, decodeBuffer, 0, frameSizeSamples, false);
+                    lastPacketWasLost = false;
+                }
             }
 
             if (samplesDecoded > 0) {
@@ -177,7 +235,7 @@ public class OpusCodec {
             }
 
             return null;
-        } catch (OpusException e) {
+        } catch (Exception e) {
             decodeErrors++;
             return null;
         }
@@ -192,23 +250,39 @@ public class OpusCodec {
      * @return number of samples decoded per channel, or -1 on error
      */
     public int decodeTo(byte[] opusData, int length, short[] outPcm) {
-        if (!decoderInitialized || decoder == null) return -1;
+        if (!decoderInitialized) return -1;
 
         try {
-            int samplesPerChannel;
-            if (opusData == null || length <= 0) {
-                samplesPerChannel = decoder.decode(null, 0, 0, outPcm, 0, frameSizeSamples, false);
-                plcFrames++;
-                lastPacketWasLost = true;
-            } else {
-                if (lastPacketWasLost && enableFEC) {
-                    try {
-                        decoder.decode(opusData, 0, length, outPcm, 0, frameSizeSamples, true);
-                        fecFrames++;
-                    } catch (OpusException ignored) {}
+            int samplesPerChannel = -1;
+            
+            if (useNativeDecoder) {
+                if (opusData == null || length <= 0) {
+                    samplesPerChannel = nativeDecoderDecode(nativeDecoderPtr, null, 0, outPcm, frameSizeSamples, false);
+                    plcFrames++;
+                    lastPacketWasLost = true;
+                } else {
+                    if (lastPacketWasLost && enableFEC) {
+                         nativeDecoderDecode(nativeDecoderPtr, opusData, length, outPcm, frameSizeSamples, true);
+                         fecFrames++;
+                    }
+                    samplesPerChannel = nativeDecoderDecode(nativeDecoderPtr, opusData, length, outPcm, frameSizeSamples, false);
+                    lastPacketWasLost = false;
                 }
-                samplesPerChannel = decoder.decode(opusData, 0, length, outPcm, 0, frameSizeSamples, false);
-                lastPacketWasLost = false;
+            } else {
+                if (opusData == null || length <= 0) {
+                    samplesPerChannel = decoder.decode(null, 0, 0, outPcm, 0, frameSizeSamples, false);
+                    plcFrames++;
+                    lastPacketWasLost = true;
+                } else {
+                    if (lastPacketWasLost && enableFEC) {
+                        try {
+                            decoder.decode(opusData, 0, length, outPcm, 0, frameSizeSamples, true);
+                            fecFrames++;
+                        } catch (OpusException ignored) {}
+                    }
+                    samplesPerChannel = decoder.decode(opusData, 0, length, outPcm, 0, frameSizeSamples, false);
+                    lastPacketWasLost = false;
+                }
             }
 
             if (samplesPerChannel > 0) {
@@ -217,7 +291,7 @@ public class OpusCodec {
                 return samplesPerChannel;
             }
             return -1;
-        } catch (OpusException e) {
+        } catch (Exception e) {
             decodeErrors++;
             return -1;
         }
@@ -248,9 +322,13 @@ public class OpusCodec {
      * Reset decoder state. Useful after seek or error recovery.
      */
     public void resetDecoder() {
-        if (decoder != null) {
+        if (decoderInitialized) {
             try {
-                decoder.resetState();
+                if (useNativeDecoder) {
+                    nativeDecoderReset(nativeDecoderPtr);
+                } else {
+                    decoder.resetState();
+                }
                 lastPacketWasLost = false;
                 resetCount++;
                 Log.i(TAG, "Decoder reset (count: " + resetCount + ")");
@@ -272,7 +350,26 @@ public class OpusCodec {
      */
     public boolean initEncoder() {
         try {
-            encoder = new OpusEncoder(sampleRate, channels, OpusApplication.OPUS_APPLICATION_AUDIO);
+            // VOIP application mapping: 2048 in native opus corresponds to OPUS_APPLICATION_VOIP
+            nativeEncoderPtr = nativeEncoderCreate(sampleRate, channels, 2048);
+            if (nativeEncoderPtr != 0) {
+                useNativeEncoder = true;
+                nativeEncoderSetBitrate(nativeEncoderPtr, bitrate);
+                nativeEncoderSetComplexity(nativeEncoderPtr, Math.min(10, Math.max(0, complexity)));
+                nativeEncoderSetFEC(nativeEncoderPtr, enableFEC);
+                nativeEncoderSetDTX(nativeEncoderPtr, enableDTX);
+                
+                encoderInitialized = true;
+                Log.i(TAG, "Native Encoder initialized");
+                return true;
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Native encoder init failed, falling back to Concentus", t);
+        }
+
+        try {
+            useNativeEncoder = false;
+            encoder = new OpusEncoder(sampleRate, channels, OpusApplication.OPUS_APPLICATION_VOIP);
 
             encoder.setBitrate(bitrate);
             encoder.setComplexity(Math.min(10, Math.max(0, complexity)));
@@ -281,7 +378,7 @@ public class OpusCodec {
             encoder.setSignalType(OpusSignal.OPUS_SIGNAL_MUSIC);
 
             encoderInitialized = true;
-            Log.i(TAG, "Encoder initialized: " + sampleRate + "Hz, " + channels + "ch, "
+            Log.i(TAG, "Concentus Encoder initialized: " + sampleRate + "Hz, " + channels + "ch, "
                     + bitrate / 1000 + "kbps, complexity=" + complexity
                     + ", FEC=" + enableFEC + ", DTX=" + enableDTX);
             return true;
@@ -303,16 +400,21 @@ public class OpusCodec {
      * @return Opus encoded packet, or null on error
      */
     public byte[] encode(short[] pcmData, int offset, int frameSize) {
-        if (!encoderInitialized || encoder == null) {
+        if (!encoderInitialized) {
             Log.w(TAG, "Encoder not initialized");
             return null;
         }
 
         try {
-            int encodedBytes = encoder.encode(
-                    pcmData, offset, frameSize,
-                    encodeBuffer, 0, encodeBuffer.length
-            );
+            int encodedBytes;
+            if (useNativeEncoder) {
+                encodedBytes = nativeEncoderEncode(nativeEncoderPtr, pcmData, offset, frameSize, encodeBuffer);
+            } else {
+                encodedBytes = encoder.encode(
+                        pcmData, offset, frameSize,
+                        encodeBuffer, 0, encodeBuffer.length
+                );
+            }
 
             if (encodedBytes > 0) {
                 totalFramesEncoded++;
@@ -324,7 +426,7 @@ public class OpusCodec {
             }
 
             return null;
-        } catch (OpusException e) {
+        } catch (Exception e) {
             encodeErrors++;
             return null;
         }
@@ -340,13 +442,18 @@ public class OpusCodec {
      * @return encoded length in bytes, or -1 on error
      */
     public int encodeToInternalBuffer(short[] pcmData, int offset, int frameSize) {
-        if (!encoderInitialized || encoder == null) return -1;
+        if (!encoderInitialized) return -1;
 
         try {
-            int encodedBytes = encoder.encode(
-                    pcmData, offset, frameSize,
-                    encodeBuffer, 0, encodeBuffer.length
-            );
+            int encodedBytes;
+            if (useNativeEncoder) {
+                encodedBytes = nativeEncoderEncode(nativeEncoderPtr, pcmData, offset, frameSize, encodeBuffer);
+            } else {
+                encodedBytes = encoder.encode(
+                        pcmData, offset, frameSize,
+                        encodeBuffer, 0, encodeBuffer.length
+                );
+            }
 
             if (encodedBytes > 0) {
                 totalFramesEncoded++;
@@ -354,7 +461,7 @@ public class OpusCodec {
                 return encodedBytes;
             }
             return -1;
-        } catch (OpusException e) {
+        } catch (Exception e) {
             encodeErrors++;
             return -1;
         }
@@ -379,9 +486,13 @@ public class OpusCodec {
      * Reset encoder state. Useful after errors.
      */
     public void resetEncoder() {
-        if (encoder != null) {
+        if (encoderInitialized) {
             try {
-                encoder.resetState();
+                if (useNativeEncoder) {
+                    nativeEncoderReset(nativeEncoderPtr);
+                } else {
+                    encoder.resetState();
+                }
                 Log.i(TAG, "Encoder reset");
             } catch (Exception e) {
                 Log.e(TAG, "Encoder reset failed, reinitializing", e);
@@ -399,8 +510,12 @@ public class OpusCodec {
      */
     public void setBitrate(int bitrate) {
         this.bitrate = bitrate;
-        if (encoderInitialized && encoder != null) {
-            encoder.setBitrate(bitrate);
+        if (encoderInitialized) {
+            if (useNativeEncoder) {
+                nativeEncoderSetBitrate(nativeEncoderPtr, bitrate);
+            } else {
+                encoder.setBitrate(bitrate);
+            }
             Log.d(TAG, "Bitrate updated to " + bitrate / 1000 + "kbps");
         }
     }
@@ -410,8 +525,12 @@ public class OpusCodec {
      */
     public void setComplexity(int complexity) {
         this.complexity = complexity;
-        if (encoderInitialized && encoder != null) {
-            encoder.setComplexity(Math.min(10, Math.max(0, complexity)));
+        if (encoderInitialized) {
+            if (useNativeEncoder) {
+                nativeEncoderSetComplexity(nativeEncoderPtr, Math.min(10, Math.max(0, complexity)));
+            } else {
+                encoder.setComplexity(Math.min(10, Math.max(0, complexity)));
+            }
         }
     }
 
@@ -420,16 +539,16 @@ public class OpusCodec {
     // ════════════════════════════════════════════════════════════════════
 
     public boolean isDecoderReady() {
-        return decoderInitialized && decoder != null;
+        return decoderInitialized;
     }
 
     public boolean isEncoderReady() {
-        return encoderInitialized && encoder != null;
+        return encoderInitialized;
     }
 
     public int getSampleRate() { return sampleRate; }
     public int getChannels() { return channels; }
-    public int getFrameSizeMs() { return frameSizeMs; }
+    public float getFrameSizeMs() { return frameSizeMs; }
     public int getFrameSizeSamples() { return frameSizeSamples; }
     public int getFrameSizeInterleaved() { return frameSizeInterleaved; }
 
@@ -437,6 +556,14 @@ public class OpusCodec {
      * Release all codec resources.
      */
     public void release() {
+        if (useNativeEncoder && nativeEncoderPtr != 0) {
+            nativeEncoderDestroy(nativeEncoderPtr);
+            nativeEncoderPtr = 0;
+        }
+        if (useNativeDecoder && nativeDecoderPtr != 0) {
+            nativeDecoderDestroy(nativeDecoderPtr);
+            nativeDecoderPtr = 0;
+        }
         encoder = null;
         decoder = null;
         encoderInitialized = false;

@@ -30,6 +30,11 @@ namespace AudioTransfer.Core.Logging
             LogEvent?.Invoke(this, new LogEventArgs(log));
         }
 
+        public void Clear()
+        {
+            while (_memoryLogs.TryDequeue(out _)) { }
+        }
+
         public void LogError(string message, Exception ex = null)
         {
             Log($"{message} {ex?.Message}", LogLevel.Error);

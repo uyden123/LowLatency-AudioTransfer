@@ -17,12 +17,15 @@ The project consists of three main components:
     -   Android application (written in Java & C++/AAudio) to capture and stream audio over the network.
     -   Utilizes AAudio for the lowest possible latency.
 
-2.  **[AudioTransfer](./AudioTransfer/) (Windows Receiver/Bridge):**
+2.  **[AudioTransfer](./AudioTransfer/) (Windows Receiver - C#/.NET):**
     -   Includes both GUI (WPF) and CLI versions.
-    -   Receives audio data from Android over the network and forwards it to the virtual audio driver.
-    -   Handles decoding and synchronization.
+    -   Standard Windows receiver using C# and .NET technology.
 
-3.  **[VirtualMicDriver](./VirtualMicDriver/) (System Driver):**
+3.  **[AudioTransfer.Qt](./AudioTransfer.Qt/) (Advanced Windows Receiver - C++/Qt):**
+    -   High-performance receiver using C++ and Qt Quick (QML) for lower latency and modern UI.
+    -   Ideal for power users and professional-grade performance.
+
+4.  **[VirtualMicDriver](./VirtualMicDriver/) (System Driver):**
     -   Virtual audio driver for Windows.
     -   Creates a virtual Microphone device in the system for other applications (Zoom, Discord, OBS...) to use.
 
@@ -62,12 +65,15 @@ Dự án bao gồm 3 thành phần chính:
     -   Ứng dụng Android (viết bằng Java & C++/AAudio) để thu âm thanh và truyền đi qua giao thức mạng.
     -   Sử dụng AAudio để có độ trễ thấp nhất có thể.
 
-2.  **[AudioTransfer](./AudioTransfer/) (Windows Receiver/Bridge):**
+2.  **[AudioTransfer](./AudioTransfer/) (Windows Receiver - C#/.NET):**
     -   Bao gồm phiên bản GUI (WPF) và CLI.
-    -   Nhận dữ liệu âm thanh từ Android qua mạng và chuyển tiếp nó đến driver âm thanh ảo.
-    -   Xử lý việc giải mã và đồng bộ hóa.
+    -   Bộ thu tiêu chuẩn sử dụng công nghệ C# và .NET.
 
-3.  **[VirtualMicDriver](./VirtualMicDriver/) (System Driver):**
+3.  **[AudioTransfer.Qt](./AudioTransfer.Qt/) (Advanced Windows Receiver - C++/Qt):**
+    -   Bộ thu hiệu năng cao sử dụng C++ và Qt Quick (QML) để tối ưu độ trễ và giao diện.
+    -   Phù hợp cho các tác vụ chuyên nghiệp đòi hỏi hiệu năng cực hạn.
+
+4.  **[VirtualMicDriver](./VirtualMicDriver/) (System Driver):**
     -   Driver âm thanh ảo cho Windows.
     -   Tạo ra một thiết bị Microphone ảo trong hệ thống để các ứng dụng khác (Zoom, Discord, OBS...) có thể sử dụng âm thanh được truyền đến.
 
