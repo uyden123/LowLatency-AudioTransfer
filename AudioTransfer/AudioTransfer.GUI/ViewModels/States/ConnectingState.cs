@@ -35,19 +35,19 @@ public class ConnectingState : IPlayerState
                 return;
             }
 
-            CoreLogger.Instance.Log($"[ConnectingState] Verifying device at {_targetIp}...");
+            // 2. Wait for Handshake (replaces VerifyDeviceAsync)
+            CoreLogger.Instance.Log($"[ConnectingState] Waiting for handshake with {_targetIp}...");
             
-            // Verification can be slow especially with non-existent IPs (ARP/Timeout)
-            bool isAlive = await Task.Run(() => context.PlayerEngine.VerifyDeviceAsync(_targetIp, _port));
+            // Handshake timeout: 5 seconds for reliability
+            bool isAlive = await context.PlayerEngine.MicReceiver!.WaitHandshakeAsync(5000);
             
-            CoreLogger.Instance.Log($"[ConnectingState] VerifyDeviceAsync result: {isAlive}");
+            CoreLogger.Instance.Log($"[ConnectingState] Handshake result: {isAlive}");
             
             if (!isAlive)
             {
-                CoreLogger.Instance.Log($"[ConnectingState] Device {_targetIp} not responding. Stopping engine and returning to DisconnectedState.");
-                context.NotifyUser($"Device {_targetIp} not responding.\nCheck IP and Android app.", "Connection Failed");
+                CoreLogger.Instance.Log($"[ConnectingState] Handshake with {_targetIp} timed out. Stopping engine.");
+                context.NotifyUser($"Handshake timed out with {_targetIp}.\nCheck IP and Android app.", "Connection Failed");
                 
-                // Stop UI blocking during cleanup
                 await Task.Run(() => context.PlayerEngine.Stop());
                 context.ChangeState(new DisconnectedState());
                 return;

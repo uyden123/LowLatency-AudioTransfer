@@ -56,6 +56,7 @@ public class JitterBuffer {
     private int targetPackets = AudioConstants.MIN_TARGET_PACKETS; // Final current target (adaptive or fixed)
 
     private int overshootCount = 0;
+    private volatile boolean filterPackets = false;
 
     public static class AudioPacket {
         public int sequence;
@@ -171,6 +172,8 @@ public class JitterBuffer {
     }
 
     public synchronized void add(int sequence, int codec, long timestamp, long wallClock, byte[] data, int offset, int length) {
+        if (filterPackets) return;
+
         // Log every 100 packets
         if (totalReceived % 100 == 0) {
             Log.d(TAG, "Buffer status: size=" + queue.size() + "/" + targetPackets + " (Mode: " + currentMode + ")");
@@ -595,6 +598,14 @@ public class JitterBuffer {
         this.targetPackets = (int) Math.max(1, Math.ceil(minTargetMs / PACKET_DURATION_MS));
         Log.i(TAG, "Buffer config updated: mode=" + mode + ", min=" + minTargetMs + "ms, max=" + maxTargetMs + "ms");
     }
+
+    public void setFilterPackets(boolean filter) {
+        this.filterPackets = filter;
+        if (filter) {
+            clear();
+        }
+    }
+
 
 
 }

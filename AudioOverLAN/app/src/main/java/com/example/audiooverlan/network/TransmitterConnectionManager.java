@@ -10,7 +10,7 @@ public class TransmitterConnectionManager {
     private final int sampleRate;
     private final int packetDuration;
     
-    private UdpMicSender udpSender;
+    private UdpMicBroadcaster udpSender;
     private NsdMicAdvertiser nsdAdvertiser;
     private ConnectionListener listener;
 
@@ -29,8 +29,8 @@ public class TransmitterConnectionManager {
     }
 
     public void start() {
-        udpSender = new UdpMicSender(targetIp, targetPort, sampleRate, packetDuration);
-        udpSender.setConnectionListener(new UdpMicSender.OnConnectionStateListener() {
+        udpSender = new UdpMicBroadcaster(targetIp, targetPort, sampleRate, packetDuration);
+        udpSender.setConnectionListener(new UdpMicBroadcaster.OnConnectionStateListener() {
             @Override
             public void onConnected() { if (listener != null) listener.onServerConnected(); }
             @Override

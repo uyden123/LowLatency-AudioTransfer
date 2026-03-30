@@ -22,19 +22,22 @@
 // ============================================================================
 class CallbackPlayer : public oboe::AudioStreamDataCallback, public oboe::AudioStreamErrorCallback {
 private:
-    float mTargetVolume = 1.0f;
-    float mVolumeMul = 1.0f;
+    std::atomic<float> mTargetVolume{1.0f};
+    std::atomic<float> mVolumeMul{1.0f};
     std::atomic<bool> mWasUnderrun{false};
     float mFadeInGain = 1.0f; // 1.0 = no fade needed
     int16_t mLastSamples[2] = {0, 0}; // Track last sample for graceful fade-out
 
     void applyFade(int16_t* data, int32_t numFrames) {
-        if (mVolumeMul == mTargetVolume) {
-            if (mVolumeMul <= 0.0f) {
+        float target = mTargetVolume.load(std::memory_order_relaxed);
+        float current = mVolumeMul.load(std::memory_order_relaxed);
+
+        if (std::abs(current - target) < 0.0001f) {
+            if (target <= 0.0f) {
                 std::memset(data, 0, numFrames * mChannelCount * sizeof(int16_t));
-            } else if (mVolumeMul < 0.999f) {
+            } else if (target < 0.999f) {
                 for (int i = 0; i < numFrames * mChannelCount; ++i) {
-                    data[i] = static_cast<int16_t>(data[i] * mVolumeMul);
+                    data[i] = static_cast<int16_t>(data[i] * target);
                 }
             }
             return;
@@ -44,16 +47,17 @@ private:
         const float fadeStep = 1.0f / FADE_SAMPLES;
         
         for (int i = 0; i < numFrames; ++i) {
-            if (mVolumeMul < mTargetVolume) {
-                mVolumeMul = std::min(mTargetVolume, mVolumeMul + fadeStep);
-            } else if (mVolumeMul > mTargetVolume) {
-                mVolumeMul = std::max(mTargetVolume, mVolumeMul - fadeStep);
+            if (current < target) {
+                current = std::min(target, current + fadeStep);
+            } else if (current > target) {
+                current = std::max(target, current - fadeStep);
             }
 
             for (int ch = 0; ch < mChannelCount; ++ch) {
-                data[i * mChannelCount + ch] = static_cast<int16_t>(data[i * mChannelCount + ch] * mVolumeMul);
+                data[i * mChannelCount + ch] = static_cast<int16_t>(data[i * mChannelCount + ch] * current);
             }
         }
+        mVolumeMul.store(current, std::memory_order_relaxed);
     }
 
 public:
@@ -64,11 +68,7 @@ public:
         auto *output = static_cast<int16_t*>(audioData);
         int samplesNeeded = numFrames * mChannelCount;
         
-        int samplesRead = 0;
-        // Don't read from ring buffer if target is mute and fade is done
-        if (mTargetVolume > 0 || mVolumeMul > 0.001f) {
-            samplesRead = mRingBuffer.read(output, samplesNeeded);
-        }
+        int samplesRead = mRingBuffer.read(output, samplesNeeded);
 
         int framesRead = samplesRead / mChannelCount;
 
@@ -156,13 +156,6 @@ public:
         builder.setSharingMode(exclusive ? oboe::SharingMode::Exclusive : oboe::SharingMode::Shared);
         oboe::Result result = builder.openStream(mStream);
 
-        // Fallback: If exclusive fails, try shared
-        if (result != oboe::Result::OK && exclusive) {
-            LOGW("Failed to open in Exclusive mode: %s. Falling back to Shared.", oboe::convertToText(result));
-            builder.setSharingMode(oboe::SharingMode::Shared);
-            result = builder.openStream(mStream);
-        }
-
         if (result != oboe::Result::OK) {
             LOGE("Failed to open stream (Final): %s", oboe::convertToText(result));
             return false;
@@ -185,7 +178,7 @@ public:
     }
 
     void setVolume(float volume) {
-        mTargetVolume = volume;
+        mTargetVolume.store(volume, std::memory_order_relaxed);
     }
 
     void stop() {

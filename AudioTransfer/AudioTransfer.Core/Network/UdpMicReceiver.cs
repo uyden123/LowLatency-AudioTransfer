@@ -34,12 +34,16 @@ namespace AudioTransfer.Core.Network
         private const byte CODEC_ACK = 254;
         private const byte CODEC_CONTROL = 255;
 
+        private const byte CODEC_HEARTBEAT = 140;
+        private const byte CODEC_HEARTBEAT_ACK = 141;
+
         private readonly System.Collections.Concurrent.ConcurrentDictionary<int, TaskCompletionSource<bool>> _pendingAcks = new();
         private int _controlMessageId;
 
         // Handshake state
         private enum HandshakeState { Disconnected, SynSent, Authenticated }
         private volatile HandshakeState _state = HandshakeState.Disconnected;
+        private TaskCompletionSource<bool>? _handshakeTcs;
 
         public event EventHandler<string>? OnControlMessage;
         public event EventHandler? OnAndroidConnected;
@@ -102,6 +106,23 @@ namespace AudioTransfer.Core.Network
                 IsBackground = true
             };
             _keepAliveThread.Start();
+
+            // Proactively initiate handshake if target is known
+            if (_targetEp != null)
+            {
+                _handshakeTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _state = HandshakeState.SynSent;
+                SendBinaryHandshake(CODEC_SYN, _targetEp);
+            }
+        }
+
+        public async Task<bool> WaitHandshakeAsync(int timeoutMs)
+        {
+            if (_state == HandshakeState.Authenticated) return true;
+            if (_handshakeTcs == null) return false;
+
+            var completedTask = await Task.WhenAny(_handshakeTcs.Task, Task.Delay(timeoutMs));
+            return completedTask == _handshakeTcs.Task && await _handshakeTcs.Task;
         }
 
         private void ReceiveLoop()
@@ -124,29 +145,31 @@ namespace AudioTransfer.Core.Network
 
                     IPEndPoint remoteIpEp = (IPEndPoint)remoteEp;
 
-                    lock (_epLock)
-                    {
-                        // Fallback logic for discovering endpoints implicitly if no target provided
-                        if (_androidEp == null && _targetEp == null && length > 3 && _receiveBuffer[2] == CODEC_AUDIO)
-                        {
-                            _androidEp = remoteIpEp;
-                            _state = HandshakeState.Authenticated;
-                            _lastPacketTime = DateTime.UtcNow;
-                            _jitterBuffer.Clear();
-                            CoreLogger.Instance.Log($"[UdpMicReceiver] Android connected implicitly: {remoteIpEp}");
-                            OnAndroidConnected?.Invoke(this, EventArgs.Empty);
-                        }
+                    // lock (_epLock)
+                    // {
+                    //     // Fallback logic for discovering endpoints implicitly if no target provided
+                    //     if (_androidEp == null && _targetEp == null && length > 3 && _receiveBuffer[2] == CODEC_AUDIO)
+                    //     {
+                    //         _androidEp = remoteIpEp;
+                    //         _state = HandshakeState.Authenticated;
+                    //         _lastPacketTime = DateTime.UtcNow;
+                    //         _jitterBuffer.Clear();
+                    //         CoreLogger.Instance.Log($"[UdpMicReceiver] Android connected implicitly: {remoteIpEp}");
+                    //         OnAndroidConnected?.Invoke(this, EventArgs.Empty);
+                    //     }
 
-                        if (_androidEp != null && _androidEp.Equals(remoteIpEp))
-                        {
-                            _lastPacketTime = DateTime.UtcNow;
-                        }
-                    }
+                    //     if (_androidEp != null && _androidEp.Equals(remoteIpEp))
+                    //     {
+                    //         _lastPacketTime = DateTime.UtcNow;
+                    //     }
+                    // }
+
 
                     if (length < 3) continue;
 
-                    int codec = _receiveBuffer[2];
+                    _lastPacketTime = DateTime.UtcNow;
 
+                    int codec = _receiveBuffer[2];
                     if (codec == CODEC_SYN_ACK)
                     {
                         lock (_epLock)
@@ -158,25 +181,13 @@ namespace AudioTransfer.Core.Network
                                 _lastPacketTime = DateTime.UtcNow;
                                 _jitterBuffer.Clear();
                                 CoreLogger.Instance.Log($"[UdpMicReceiver] Handshake Complete! Connected to: {remoteIpEp}");
+                                _handshakeTcs?.TrySetResult(true);
                                 OnAndroidConnected?.Invoke(this, EventArgs.Empty);
                             }
                         }
                         SendBinaryHandshake(CODEC_ACK_HANDSHAKE, remoteIpEp);
                         continue;
                     }
-
-                    if (length < 19) continue;
-
-                    int seqNum = (_receiveBuffer[0] << 8) | _receiveBuffer[1];
-                    long timestamp = BitConverter.ToInt64(_receiveBuffer, 3);
-                    long wallClock = BitConverter.ToInt64(_receiveBuffer, 11);
-                    int audioLength = length - 19;
-
-                    if (audioLength < 0) continue;
-
-                    Interlocked.Increment(ref _packetsReceived);
-                    Interlocked.Add(ref _bytesReceived, audioLength);
-
                     if (codec == CODEC_ACK)
                     {
                         if (length >= 23)
@@ -185,6 +196,12 @@ namespace AudioTransfer.Core.Network
                             if (_pendingAcks.TryRemove(msgId, out var tcs))
                                 tcs.TrySetResult(true);
                         }
+                        continue;
+                    }
+
+                    if (codec == CODEC_HEARTBEAT_ACK)
+                    {
+                        //CoreLogger.Instance.Log($"[UdpMicReceiver] Heartbeat ACK from {remoteIpEp}");
                         continue;
                     }
 
@@ -210,6 +227,18 @@ namespace AudioTransfer.Core.Network
 
                     if (codec == CODEC_AUDIO && _state == HandshakeState.Authenticated)
                     {
+                        if (length < 19) continue;
+
+                        int seqNum = (_receiveBuffer[0] << 8) | _receiveBuffer[1];
+                        long timestamp = BitConverter.ToInt64(_receiveBuffer, 3);
+                        long wallClock = BitConverter.ToInt64(_receiveBuffer, 11);
+                        int audioLength = length - 19;
+
+                        if (audioLength < 0) continue;
+
+                        Interlocked.Increment(ref _packetsReceived);
+                        Interlocked.Add(ref _bytesReceived, audioLength);
+                        
                         _jitterBuffer.Add(seqNum, timestamp, wallClock, _receiveBuffer, 19, audioLength);
                     }
                 }
@@ -234,30 +263,42 @@ namespace AudioTransfer.Core.Network
 
                     lock (_epLock)
                     {
-                        if (_androidEp != null && (DateTime.UtcNow - _lastPacketTime).TotalSeconds > 5)
+                        if (_androidEp != null && (DateTime.UtcNow - _lastPacketTime).TotalSeconds > 2)
                         {
-                            CoreLogger.Instance.Log($"[UdpMicReceiver] Android {_androidEp} timed out.");
-                            _androidEp = null;
-                            _state = HandshakeState.Disconnected;
-                            OnAndroidDisconnected?.Invoke(this, EventArgs.Empty);
+                            CoreLogger.Instance.Log($"[UdpMicReceiver] Connection lost with {_androidEp} (timeout). Re-initiating handshake...");
+                            
+                            // Re-initiate handshake instead of just disconnecting
+                            _state = HandshakeState.SynSent;
+                            _handshakeTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                         }
                     }
 
-                    lock (_epLock)
+                    if (_state == HandshakeState.SynSent && _targetEp != null)
                     {
-                        if (_state == HandshakeState.Authenticated && _androidEp != null)
-                        {
-                            SendBinaryHandshake(CODEC_ACK_HANDSHAKE, _androidEp);
-                        }
-                        else if ((_state == HandshakeState.Disconnected || _state == HandshakeState.SynSent) && _targetEp != null)
-                        {
-                            _state = HandshakeState.SynSent;
-                            SendBinaryHandshake(CODEC_SYN, _targetEp);
-                        }
+                        CoreLogger.Instance.Log($"[UdpMicReceiver] Sending SYN to {_targetEp}");
+                        SendBinaryHandshake(CODEC_SYN, _targetEp);
+                    }
+
+                    if(_state == HandshakeState.Authenticated && _androidEp != null)
+                    {
+                        //CoreLogger.Instance.Log($"[UdpMicReceiver] Sending Heartbeat to {_androidEp}");
+                        SendHeartbeat();
                     }
                 }
                 catch { if (!_isRunning) break; }
             }
+        }
+
+        private void SendHeartbeat()
+        {
+            if (_udpClient == null || _udpClient.Client == null || _androidEp == null) return;
+            try
+            {
+                byte[] packet = new byte[3];
+                packet[2] = CODEC_HEARTBEAT;
+                _udpClient.Client.SendTo(packet, packet.Length, SocketFlags.None, _androidEp);
+            }
+            catch { }
         }
 
         private void SendBinaryHandshake(byte codec, IPEndPoint target)

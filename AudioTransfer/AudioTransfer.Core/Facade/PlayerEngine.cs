@@ -102,34 +102,10 @@ namespace AudioTransfer.Core.Facade
             _playbackOrchestrator = new PlayerPlaybackOrchestrator(_micJitterBuffer, _opusDecoder, _wasapiPlayer, _stats, Log);
             _playbackOrchestrator.Start();
 
-            Log($"[PlayerEngine] Started. Listening on port {androidPort}.");
+            Log($"[PlayerEngine] Started. Listening on port {androidPort}. Handshake initiated to {androidIp}");
             return true;
         }
 
-        public async Task<bool> VerifyDeviceAsync(string ip, int port)
-        {
-            try
-            {
-                using var udp = new UdpClient();
-                udp.Client.ReceiveTimeout = 2000;
-                var target = new IPEndPoint(IPAddress.Parse(ip), port);
-                
-                byte[] ping = new byte[3];
-                ping[2] = 250; // CODEC_SYN
-                
-                await udp.SendAsync(ping, ping.Length, target);
-                var receiveTask = udp.ReceiveAsync();
-                
-                if (await Task.WhenAny(receiveTask, Task.Delay(2000)) == receiveTask)
-                {
-                    var result = await receiveTask;
-                    if (result.Buffer.Length >= 3 && result.Buffer[2] == 251) // CODEC_SYN_ACK
-                        return true;
-                }
-                return false;
-            }
-            catch { return false; }
-        }
 
         #endregion
 

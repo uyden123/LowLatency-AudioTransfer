@@ -19,6 +19,5 @@ public interface IPlayerEngine : IDisposable
 
     void SetSystemMute(bool muted);
     Task<bool> StartAndroidMicListenerAsync(string androidIp, int androidPort = 5003, string? playbackDeviceId = null);
-    Task<bool> VerifyDeviceAsync(string ip, int port);
     void Stop();
 }

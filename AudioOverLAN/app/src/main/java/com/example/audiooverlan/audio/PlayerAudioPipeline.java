@@ -105,7 +105,6 @@ public class PlayerAudioPipeline {
     private void initAudioEngine() {
         if (useAAudio && AAudioPlayer.isAvailable()) {
             aaudioPlayer = new AAudioPlayer();
-            // XIAOMI HACK: Use Voice path for low latency even for media
             int usage = (isScoActive) ? 2 :  isExclusiveMode ?  AudioAttributes.USAGE_GAME: AudioAttributes.USAGE_MEDIA;
             int content = (isScoActive) ? 1 : (isExclusiveMode ? AudioAttributes.CONTENT_TYPE_MOVIE : AudioAttributes.CONTENT_TYPE_MUSIC);
             boolean success = aaudioPlayer.start(sampleRate, channels, 0, isExclusiveMode, usage, content);
@@ -319,23 +318,15 @@ public class PlayerAudioPipeline {
         Log.i(TAG, "Restarting audio engine (scoActive=" + scoActive + ", exclusive=" + isExclusiveMode + ")...");
         synchronized (outputLock) {
             this.isScoActive = scoActive;
-            if (aaudioPlayer != null) {
-                aaudioPlayer.stop();
-                aaudioPlayer = null;
-            }
-            if (audioTrack != null) {
-                try {
-                    audioTrack.stop();
-                    audioTrack.release();
-                } catch (Exception ignored) {}
-                audioTrack = null;
-            }
+            stopAudioOutputInternal();
             
             // Re-init with correct mode
             if (useAAudio && AAudioPlayer.isAvailable()) {
                 aaudioPlayer = new AAudioPlayer();
-                int usage = (isScoActive) ? 2 :  isExclusiveMode ?  AudioAttributes.USAGE_GAME: AudioAttributes.USAGE_MEDIA;
-                int content = (isScoActive) ? 1 : (isExclusiveMode ? AudioAttributes.CONTENT_TYPE_MOVIE : AudioAttributes.CONTENT_TYPE_MUSIC);
+                //int usage = (isScoActive) ? 2 :  (isExclusiveMode ?  AudioAttributes.USAGE_GAME: AudioAttributes.USAGE_MEDIA);
+                //int content = (isScoActive) ? 1 : (isExclusiveMode ? AudioAttributes.CONTENT_TYPE_MOVIE : AudioAttributes.CONTENT_TYPE_MUSIC);
+                int usage = (isScoActive) ? 2 :  AudioAttributes.USAGE_MEDIA;
+                int content = (isScoActive) ? 1 :  AudioAttributes.CONTENT_TYPE_MUSIC;
                 boolean success = aaudioPlayer.start(sampleRate, channels, 0, isExclusiveMode, usage, content);
                 if (!success) {
                     aaudioPlayer = null;
@@ -349,6 +340,27 @@ public class PlayerAudioPipeline {
             }
         }
     }
+
+    public synchronized void stopAudioOutput() {
+        synchronized (outputLock) {
+            stopAudioOutputInternal();
+        }
+    }
+
+    private void stopAudioOutputInternal() {
+        if (aaudioPlayer != null) {
+            aaudioPlayer.stop();
+            aaudioPlayer = null;
+        }
+        if (audioTrack != null) {
+            try {
+                audioTrack.stop();
+                audioTrack.release();
+            } catch (Exception ignored) {}
+            audioTrack = null;
+        }
+    }
+
 
     private short[] generatePinkNoise(int len) {
         short[] buf = new short[len];

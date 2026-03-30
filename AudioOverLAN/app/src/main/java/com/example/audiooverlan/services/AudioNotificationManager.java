@@ -57,7 +57,6 @@ public class AudioNotificationManager {
                 .setContentText(contentText)
                 .setContentIntent(pendingIntent)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setOngoing(true)
                 .addAction(new NotificationCompat.Action(
                         R.drawable.ic_stop,
                         "STOP",
