@@ -21,7 +21,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Player"
+                android:text="@string/player"
                 android:textColor="@color/white"
                 android:textSize="28sp"
                 android:textStyle="bold"
@@ -51,7 +51,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:text="CONNECTED"
+                    android:text="@string/connected"
                     android:textColor="@color/accent_green"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -116,7 +116,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="BUFFER LEVEL"
+                        android:text="@string/buffer_level"
                         android:textColor="@color/text_gray"
                         android:textSize="10sp"
                         android:textStyle="bold" />
@@ -124,7 +124,7 @@
                         android:id="@+id/tvBuffer"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="192 frames"
+                        tools:text="192 frames"
                         android:textColor="@color/white"
                         android:textSize="18sp"
                         android:textStyle="bold"
@@ -151,7 +151,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="TOTAL DELAY"
+                        android:text="@string/total_delay"
                         android:textColor="@color/text_gray"
                         android:textSize="10sp"
                         android:textStyle="bold" />
@@ -159,7 +159,7 @@
                         android:id="@+id/tvNetLatency"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="12 ms"
+                        tools:text="12 ms"
                         android:textColor="@color/white"
                         android:textSize="18sp"
                         android:textStyle="bold"
@@ -185,7 +185,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="NETWORK PING"
+                        android:text="@string/network_ping"
                         android:textColor="@color/text_gray"
                         android:textSize="10sp"
                         android:textStyle="bold" />
@@ -193,7 +193,7 @@
                         android:id="@+id/tvNetworkPing"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="-- ms"
+                        tools:text="-- ms"
                         android:textColor="@color/white"
                         android:textSize="18sp"
                         android:textStyle="bold"
@@ -219,7 +219,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="FORMAT"
+                        android:text="@string/format"
                         android:textColor="@color/text_gray"
                         android:textSize="10sp"
                         android:textStyle="bold" />
@@ -227,7 +227,7 @@
                         android:id="@+id/tvAudioEngine"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="16-bit PCM"
+                        tools:text="16-bit PCM"
                         android:textColor="@color/white"
                         android:textSize="18sp"
                         android:textStyle="bold"
@@ -240,7 +240,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="STREAM HEALTH"
+            android:text="@string/stream_health"
             android:textColor="@color/text_gray"
             android:textSize="12sp"
             android:textStyle="bold"
@@ -268,14 +268,14 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="BITRATE"
+                        android:text="@string/bitrate"
                         android:textColor="@color/text_gray"
                         android:textSize="9sp" />
                     <TextView
                         android:id="@+id/tvBitrate"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="128 kbps"
+                        tools:text="128 kbps"
                         android:textColor="@color/primary_blue"
                         android:textSize="14sp"
                         android:textStyle="bold" />
@@ -298,14 +298,14 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="PLC RATIO"
+                        android:text="@string/plc_ratio"
                         android:textColor="@color/text_gray"
                         android:textSize="9sp" />
                     <TextView
                         android:id="@+id/tvLostPackets"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="0.5%"
+                        tools:text="0.5%"
                         android:textColor="@color/primary_blue"
                         android:textSize="14sp"
                         android:textStyle="bold" />
@@ -327,14 +327,14 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="DROPPED"
+                        android:text="@string/dropped"
                         android:textColor="@color/text_gray"
                         android:textSize="9sp" />
                     <TextView
                         android:id="@+id/tvLatePackets"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="12"
+                        tools:text="12"
                         android:textColor="@color/primary_blue"
                         android:textSize="14sp"
                         android:textStyle="bold" />
@@ -346,7 +346,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="FOCUS STRATEGY"
+            android:text="@string/focus_strategy"
             android:textColor="@color/text_gray"
             android:textSize="12sp"
             android:textStyle="bold"
@@ -366,7 +366,7 @@
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="Coexist"
+                android:text="@string/coexist"
                 android:textAllCaps="false"
                 android:textColor="@color/toggle_button_text"
                 app:backgroundTint="@color/toggle_button_background" />
@@ -376,7 +376,7 @@
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="Polite (Pause)"
+                android:text="@string/polite_pause"
                 android:textAllCaps="false"
                 android:textColor="@color/toggle_button_text"
                 app:backgroundTint="@color/toggle_button_background" />
@@ -386,7 +386,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="BUFFER SETTINGS"
+            android:text="@string/buffer_settings"
             android:textColor="@color/text_gray"
             android:textSize="12sp"
             android:textStyle="bold"
@@ -395,7 +395,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="BUFFER MODE"
+            android:text="@string/buffer_mode"
             android:textColor="@color/text_gray"
             android:textSize="11sp"
             android:textStyle="bold"
@@ -416,7 +416,7 @@
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="Low"
+                android:text="@string/low"
                 android:textAllCaps="false"
                 android:textColor="@color/toggle_button_text"
                 app:backgroundTint="@color/toggle_button_background" />
@@ -427,7 +427,7 @@
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="Med"
+                android:text="@string/med"
                 android:textAllCaps="false"
                 android:textColor="@color/toggle_button_text"
                 app:backgroundTint="@color/toggle_button_background" />
@@ -438,7 +438,7 @@
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="High"
+                android:text="@string/high"
                 android:textAllCaps="false"
                 android:textColor="@color/toggle_button_text"
                 app:backgroundTint="@color/toggle_button_background" />
@@ -449,7 +449,7 @@
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="Cust"
+                android:text="@string/cust"
                 android:textAllCaps="false"
                 android:textColor="@color/toggle_button_text"
                 app:backgroundTint="@color/toggle_button_background" />
@@ -480,7 +480,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="MIN TARGET (ms)"
+                        android:text="@string/min_target_ms"
                         android:textColor="@color/text_gray"
                         android:textSize="10sp"
                         android:textStyle="bold" />
@@ -490,7 +490,7 @@
                         android:layout_height="wrap_content"
                         android:background="@android:color/transparent"
                         android:inputType="number"
-                        android:text="20"
+                        tools:text="20"
                         android:padding="0dp"
                         android:textColor="@color/white"
                         android:textSize="16sp" />
@@ -513,7 +513,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="MAX TARGET (ms)"
+                        android:text="@string/max_target_ms"
                         android:textColor="@color/text_gray"
                         android:textSize="10sp"
                         android:textStyle="bold" />
@@ -523,7 +523,7 @@
                         android:layout_height="wrap_content"
                         android:background="@android:color/transparent"
                         android:inputType="number"
-                        android:text="60"
+                        tools:text="60"
                         android:padding="0dp"
                         android:textColor="@color/white"
                         android:textSize="16sp" />
@@ -534,7 +534,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Low: Movie/Game. Medium: Balanced. High: Music."
+            android:text="@string/buffer_mode_desc"
             android:textColor="@color/text_gray"
             android:textSize="13sp"
             android:layout_marginBottom="24dp" />
@@ -543,7 +543,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="STREAM CONFIGURATION"
+            android:text="@string/stream_configuration"
             android:textColor="@color/text_gray"
             android:textSize="12sp"
             android:textStyle="bold"
@@ -556,14 +556,14 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Opus Bitrate"
+                android:text="@string/opus_bitrate"
                 android:textColor="@color/text_gray" />
             <TextView
                 android:id="@+id/tvOpusBitrateValue"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentEnd="true"
-                android:text="128 kbps"
+                tools:text="128 kbps"
                 android:textColor="@color/white"
                 android:textStyle="bold"
                 android:background="@drawable/bg_connected_pill"
@@ -592,7 +592,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
-                android:text="Dynamic Range Compression"
+                android:text="@string/dynamic_range_compression"
                 android:textColor="@color/text_gray" />
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switchDrc"

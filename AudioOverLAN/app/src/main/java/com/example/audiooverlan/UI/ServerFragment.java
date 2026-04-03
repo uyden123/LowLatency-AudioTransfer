@@ -69,7 +69,7 @@ public class ServerFragment extends Fragment {
                 stopTransmitterService();
             } else {
                 if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
-                    Toast.makeText(getContext(), "Streaming apps requires Android 10+", Toast.LENGTH_LONG).show();
+                    Toast.makeText(getContext(), getString(R.string.streaming_requires_android_10), Toast.LENGTH_LONG).show();
                 } else {
                     startAppsStreaming();
                 }
@@ -80,7 +80,7 @@ public class ServerFragment extends Fragment {
             ClipboardManager clipboard = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
             ClipData clip = ClipData.newPlainText("Host IP", ip);
             clipboard.setPrimaryClip(clip);
-            Toast.makeText(getContext(), "Address copied to clipboard", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), getString(R.string.address_copied), Toast.LENGTH_SHORT).show();
         });
 
         return view;

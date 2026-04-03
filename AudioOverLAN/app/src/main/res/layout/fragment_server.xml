@@ -12,7 +12,7 @@
         android:id="@+id/tvHeader"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Broadcasting"
+        android:text="@string/broadcasting"
         android:textColor="@color/white"
         android:textSize="28sp"
         android:textStyle="bold"
@@ -36,7 +36,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
-                android:text="HOST ADDRESS"
+                android:text="@string/host_address"
                 android:textColor="@color/text_gray"
                 android:textSize="12sp"
                 android:letterSpacing="0.1"
@@ -62,7 +62,7 @@
                         android:id="@+id/tvMyServerIP"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="192.168.1.105"
+                        tools:text="192.168.1.105"
                         android:textColor="@color/white"
                         android:textSize="26sp"
                         android:textStyle="bold" />
@@ -73,7 +73,7 @@
                         android:layout_height="wrap_content"
                         android:layout_alignBaseline="@id/tvMyServerIP"
                         android:layout_toEndOf="@id/tvMyServerIP"
-                        android:text=":5050"
+                        tools:text=":5050"
                         android:visibility="gone"
                         android:textColor="@color/text_gray"
                         android:textSize="18sp" />
@@ -96,7 +96,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:text="Select Audio Source"
+                android:text="@string/select_audio_source"
                 android:textColor="@color/white"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -141,7 +141,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Microphone"
+                            android:text="@string/microphone"
                             android:textColor="@color/white"
                             android:textSize="17sp"
                             android:textStyle="bold" />
@@ -150,7 +150,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="Stream your voice or surroundings"
+                            android:text="@string/stream_voice"
                             android:textColor="@color/text_gray"
                             android:textSize="13sp" />
 
@@ -209,7 +209,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Apps Capture"
+                            android:text="@string/apps_capture"
                             android:textColor="@color/white"
                             android:textSize="17sp"
                             android:textStyle="bold" />
@@ -218,7 +218,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="Stream internal system audio"
+                            android:text="@string/stream_internal_audio"
                             android:textColor="@color/text_gray"
                             android:textSize="13sp" />
 
@@ -243,7 +243,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
                 android:gravity="center"
-                android:text="Ready to Broadcast"
+                android:text="@string/ready_to_broadcast"
                 android:textColor="@color/text_gray"
                 android:textSize="14sp"
                 android:visibility="gone"/>

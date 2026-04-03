@@ -110,7 +110,7 @@ public class TransmittingFragment extends Fragment {
             ClipboardManager clipboard = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
             ClipData clip = ClipData.newPlainText("Host IP", ip);
             clipboard.setPrimaryClip(clip);
-            Toast.makeText(getContext(), "Address copied to clipboard", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), getString(R.string.address_copied), Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -235,11 +235,11 @@ public class TransmittingFragment extends Fragment {
         if (clients.isEmpty()) {
             vNoClients.setVisibility(View.VISIBLE);
             rvClients.setVisibility(View.GONE);
-            tvActiveCount.setText("0 ACTIVE");
+            tvActiveCount.setText(getResources().getQuantityString(R.plurals.active_clients, 0, 0));
         } else {
             vNoClients.setVisibility(View.GONE);
             rvClients.setVisibility(View.VISIBLE);
-            tvActiveCount.setText(String.format(Locale.getDefault(), "%d ACTIVE", clients.size()));
+            tvActiveCount.setText(getResources().getQuantityString(R.plurals.active_clients, clients.size(), clients.size()));
             clientAdapter.setClients(clients);
         }
     }

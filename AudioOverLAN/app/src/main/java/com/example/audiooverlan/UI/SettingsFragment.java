@@ -68,34 +68,25 @@ public class SettingsFragment extends Fragment {
             }
 
             // Handle Language
-            View layoutLanguage = view.findViewById(R.id.layoutLanguage);
-            android.widget.TextView tvLanguageValue = view.findViewById(R.id.tvLanguageValue);
-            if (layoutLanguage != null && tvLanguageValue != null) {
-                // Initialize current value
+            com.google.android.material.card.MaterialCardView cardLangEn = view.findViewById(R.id.cardLangEn);
+            com.google.android.material.card.MaterialCardView cardLangVi = view.findViewById(R.id.cardLangVi);
+
+            if (cardLangEn != null && cardLangVi != null) {
                 String currentLang = repo.getLanguage();
-                tvLanguageValue.setText(currentLang.equals("vi") ? "Tiếng Việt" : "English (Default)");
+                updateLanguageUI(currentLang, cardLangEn, cardLangVi, view);
 
-                layoutLanguage.setOnClickListener(v -> {
-                    String[] options = {"English", "Tiếng Việt"};
-                    new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                        .setTitle("Select Language")
-                        .setItems(options, (dialog, which) -> {
-                            String selectedLang = which == 0 ? "en" : "vi";
-                            repo.setLanguage(selectedLang);
-                            tvLanguageValue.setText(options[which]);
-                            android.widget.Toast.makeText(getContext(), "Language set to " + options[which], android.widget.Toast.LENGTH_SHORT).show();
-                        })
-                        .show();
+                cardLangEn.setOnClickListener(v -> {
+                    if (repo.getLanguage().equals("en")) return;
+                    repo.setLanguage("en");
+                    updateLanguageUI("en", cardLangEn, cardLangVi, view);
+                    triggerLanguageRecreation();
                 });
-            }
 
-            // Handle Wake Lock
-            SwitchMaterial switchWakeLock = view.findViewById(R.id.switchWakeLock);
-            if (switchWakeLock != null) {
-                switchWakeLock.setChecked(repo.isWakeLockEnabled());
-                switchWakeLock.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                    repo.setWakeLockEnabled(isChecked);
-                    android.widget.Toast.makeText(getContext(), isChecked ? "Wake lock enabled" : "Wake lock disabled", android.widget.Toast.LENGTH_SHORT).show();
+                cardLangVi.setOnClickListener(v -> {
+                    if (repo.getLanguage().equals("vi")) return;
+                    repo.setLanguage("vi");
+                    updateLanguageUI("vi", cardLangEn, cardLangVi, view);
+                    triggerLanguageRecreation();
                 });
             }
             
@@ -130,6 +121,38 @@ public class SettingsFragment extends Fragment {
         updateSelectionState(rootView.findViewById(R.id.ivThemeAuto), rootView.findViewById(R.id.tvThemeAuto), mode == 0, textSelected, textUnselected);
         updateSelectionState(rootView.findViewById(R.id.ivThemeLight), rootView.findViewById(R.id.tvThemeLight), mode == 1, textSelected, textUnselected);
         updateSelectionState(rootView.findViewById(R.id.ivThemeDark), rootView.findViewById(R.id.tvThemeDark), mode == 2, textSelected, textUnselected);
+    }
+
+    private void updateLanguageUI(String lang, MaterialCardView cardEn, MaterialCardView cardVi, View rootView) {
+        if (getContext() == null || rootView == null) return;
+
+        int colorSelected = ContextCompat.getColor(requireContext(), R.color.card_background_selected);
+        int colorUnselected = ContextCompat.getColor(requireContext(), R.color.card_background);
+        int strokeSelected = ContextCompat.getColor(requireContext(), R.color.primary_blue);
+        int strokeUnselected = ContextCompat.getColor(requireContext(), R.color.divider);
+        int textSelected = ContextCompat.getColor(requireContext(), R.color.primary_blue);
+        int textUnselected = ContextCompat.getColor(requireContext(), R.color.white);
+
+        boolean isVi = "vi".equals(lang);
+
+        cardEn.setCardBackgroundColor(!isVi ? colorSelected : colorUnselected);
+        cardEn.setStrokeColor(!isVi ? strokeSelected : strokeUnselected);
+        cardVi.setCardBackgroundColor(isVi ? colorSelected : colorUnselected);
+        cardVi.setStrokeColor(isVi ? strokeSelected : strokeUnselected);
+
+        updateSelectionState(null, rootView.findViewById(R.id.tvLangEn), !isVi, textSelected, textUnselected);
+        updateSelectionState(null, rootView.findViewById(R.id.tvLangVi), isVi, textSelected, textUnselected);
+    }
+
+    private void triggerLanguageRecreation() {
+        if (getActivity() != null) {
+            androidx.viewpager2.widget.ViewPager2 vp = getActivity().findViewById(R.id.viewPager);
+            if (vp != null) {
+                getActivity().getSharedPreferences("AudioOverLAN_Prefs", android.content.Context.MODE_PRIVATE)
+                    .edit().putInt("current_tab", vp.getCurrentItem()).commit();
+            }
+            getActivity().recreate();
+        }
     }
 
 

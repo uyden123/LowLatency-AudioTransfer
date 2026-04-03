@@ -27,6 +27,17 @@ import androidx.annotation.NonNull;
 
 public class MainActivity extends AppCompatActivity {
 
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        com.example.audiooverlan.utils.SettingsRepository repo = com.example.audiooverlan.utils.SettingsRepository.getInstance(newBase);
+        String lang = repo.getLanguage();
+        java.util.Locale locale = new java.util.Locale(lang);
+        java.util.Locale.setDefault(locale);
+        android.content.res.Configuration config = new android.content.res.Configuration(newBase.getResources().getConfiguration());
+        config.setLocale(locale);
+        super.attachBaseContext(newBase.createConfigurationContext(config));
+    }
+
     public static final String PREFS_NAME = "AudioOverLAN_Prefs";
     private ViewPager2 viewPager;
     private BottomNavigationView bottomNavigationView;
@@ -38,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
                 if (result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null) {
                     startAppsStreamingWithToken(result.getData());
                 } else {
-                    Toast.makeText(this, "Permission denied for app capture", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.permission_denied_capture), Toast.LENGTH_SHORT).show();
                 }
             });
 
@@ -51,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
                 if (granted) {
                     startAutoServer();
                 } else {
-                    Toast.makeText(this, "Quyền truy cập là cần thiết để ứng dụng hoạt động", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, getString(R.string.permission_required), Toast.LENGTH_LONG).show();
                 }
             });
 

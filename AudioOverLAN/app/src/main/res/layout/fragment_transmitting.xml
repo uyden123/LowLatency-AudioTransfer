@@ -12,7 +12,7 @@
         android:id="@+id/tvHeader"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Broadcasting"
+        android:text="@string/broadcasting"
         android:textColor="@color/white"
         android:textSize="28sp"
         android:textStyle="bold"
@@ -29,7 +29,7 @@
         android:backgroundTint="@color/icon_bg"
         android:paddingHorizontal="10dp"
         android:paddingVertical="4dp"
-        android:text="MIC SOURCE"
+        android:text="@string/mic_source"
         android:textColor="@color/text_gray"
         android:textSize="11sp"
         android:textStyle="bold"
@@ -67,7 +67,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
-                android:text="HOST ADDRESS"
+                android:text="@string/host_address"
                 android:textColor="@color/text_gray"
                 android:textSize="12sp"
                 android:letterSpacing="0.1"
@@ -92,7 +92,7 @@
                         android:id="@+id/tvHostAddress"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="192.168.1.105"
+                        tools:text="192.168.1.105"
                         android:textColor="@color/white"
                         android:textSize="26sp"
                         android:textStyle="bold" />
@@ -103,7 +103,7 @@
                         android:layout_height="wrap_content"
                         android:layout_alignBaseline="@id/tvHostAddress"
                         android:layout_toEndOf="@id/tvHostAddress"
-                        android:text=":5050"
+                        tools:text=":5050"
                         android:visibility="gone"
                         android:textColor="@color/text_gray"
                         android:textSize="18sp" />
@@ -131,7 +131,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Connected Clients"
+                    android:text="@string/connected_clients"
                     android:textColor="@color/white"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -146,7 +146,7 @@
                     android:backgroundTint="@color/icon_bg"
                     android:paddingHorizontal="10dp"
                     android:paddingVertical="4dp"
-                    android:text="2 ACTIVE"
+                    tools:text="2 ACTIVE"
                     android:textColor="@color/text_gray"
                     android:textSize="11sp"
                     android:textStyle="bold" />
@@ -189,7 +189,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
-                        android:text="Waiting for connections..."
+                        android:text="@string/waiting_connections"
                         android:textColor="@color/white"
                         android:textSize="14sp"
                         android:textStyle="bold" />
@@ -198,7 +198,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Stream is active but no devices connected"
+                        android:text="@string/stream_active_no_devices"
                         android:textColor="@color/text_gray"
                         android:textSize="12sp"
                         android:gravity="center"/>
@@ -212,7 +212,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:text="Audio Processing"
+                android:text="@string/audio_processing"
                 android:textColor="@color/white"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -253,7 +253,7 @@
                             android:layout_centerVertical="true"
                             android:layout_marginStart="16dp"
                             android:layout_toEndOf="@id/ivBoostSub"
-                            android:text="Volume Boost"
+                            android:text="@string/volume_boost"
                             android:textColor="@color/white"
                             android:textSize="16sp"
                             android:textStyle="bold" />
@@ -284,7 +284,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="BOOST LEVEL"
+                                android:text="@string/boost_level"
                                 android:textColor="@color/text_gray"
                                 android:textSize="11sp"
                                 android:letterSpacing="0.05" />
@@ -294,7 +294,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_alignParentEnd="true"
-                                android:text="2.5x"
+                                tools:text="2.5x"
                                 android:textColor="@color/primary_blue_light"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
@@ -317,8 +317,8 @@
                         <RelativeLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content">
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1.1x" android:textColor="@color/text_gray" android:textSize="10sp"/>
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentEnd="true" android:text="5.0x" android:textColor="@color/text_gray" android:textSize="10sp"/>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" tools:text="1.1x" android:textColor="@color/text_gray" android:textSize="10sp"/>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentEnd="true" tools:text="5.0x" android:textColor="@color/text_gray" android:textSize="10sp"/>
                         </RelativeLayout>
                         
                     </LinearLayout>
@@ -362,7 +362,7 @@
                             android:layout_centerVertical="true"
                             android:layout_marginStart="16dp"
                             android:layout_toEndOf="@id/ivNSSub"
-                            android:text="Noise Suppression"
+                            android:text="@string/noise_suppression"
                             android:textColor="@color/white"
                             android:textSize="16sp"
                             android:textStyle="bold" />
@@ -409,14 +409,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Turn Off"
+                                    android:text="@string/turn_off"
                                     android:textColor="@color/white"
                                     android:textStyle="bold"
                                     android:textSize="14sp"/>
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="No audio processing, lowest latency"
+                                    android:text="@string/no_audio_processing"
                                     android:textColor="@color/text_gray"
                                     android:textSize="12sp"/>
                             </LinearLayout>
@@ -463,14 +463,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="RNNoise"
+                                    android:text="@string/rnnoise"
                                     android:textColor="@color/white"
                                     android:textStyle="bold"
                                     android:textSize="14sp"/>
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="CPU-efficient noise suppression"
+                                    android:text="@string/cpu_efficient_ns"
                                     android:textColor="@color/text_gray"
                                     android:textSize="12sp"/>
                             </LinearLayout>
@@ -516,14 +516,14 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="DeepFilterNet"
+                                    android:text="@string/deep_filter_net"
                                     android:textColor="@color/white"
                                     android:textStyle="bold"
                                     android:textSize="14sp"/>
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Neural AI studio-quality filter"
+                                    android:text="@string/neural_ai_filter"
                                     android:textColor="@color/text_gray"
                                     android:textSize="12sp"/>
                             </LinearLayout>
@@ -556,7 +556,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="SUPPRESSION STRENGTH"
+                                android:text="@string/suppression_strength"
                                 android:textColor="@color/text_gray"
                                 android:textSize="11sp"
                                 android:letterSpacing="0.05" />
@@ -566,7 +566,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_alignParentEnd="true"
-                                android:text="45dB"
+                                tools:text="45dB"
                                 android:textColor="@color/primary_blue_light"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
@@ -589,8 +589,8 @@
                         <RelativeLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content">
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="10dB" android:textColor="@color/text_gray" android:textSize="10sp"/>
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentEnd="true" android:text="100dB" android:textColor="@color/text_gray" android:textSize="10sp"/>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" tools:text="10dB" android:textColor="@color/text_gray" android:textSize="10sp"/>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentEnd="true" tools:text="100dB" android:textColor="@color/text_gray" android:textSize="10sp"/>
                         </RelativeLayout>
 
                     </LinearLayout>
@@ -609,7 +609,7 @@
         android:id="@+id/btnStopBroadcast"
         android:layout_width="match_parent"
         android:layout_height="64dp"
-        android:text="STOP BROADCAST"
+        android:text="@string/stop_broadcast"
         android:textColor="#3E2723"
         android:textSize="16sp"
         android:textStyle="bold"
