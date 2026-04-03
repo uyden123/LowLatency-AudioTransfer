@@ -18,7 +18,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="@drawable/bg_connected_pill"
-            android:backgroundTint="#1AFFFFFF"
+            android:backgroundTint="@color/icon_bg"
             android:padding="12dp"
             android:src="@drawable/ic_phone"
             app:tint="@color/white" />

@@ -23,6 +23,7 @@ import com.example.audiooverlan.R;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import java.util.ArrayList;
 import java.util.List;
+import androidx.annotation.NonNull;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -56,6 +57,21 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Apply theme settings
+        com.example.audiooverlan.utils.SettingsRepository repo = com.example.audiooverlan.utils.SettingsRepository.getInstance(this);
+        int themeMode = repo.getThemeMode();
+        int nightMode;
+        switch (themeMode) {
+            case 1: nightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO; break;
+            case 2: nightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES; break;
+            default: nightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM; break;
+        }
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(nightMode);
+        
+        // Log or Toast current mode
+        String modeDesc = themeMode == 0 ? "System" : (themeMode == 1 ? "Light" : "Dark");
+        // android.widget.Toast.makeText(this, "Theme: " + modeDesc, android.widget.Toast.LENGTH_SHORT).show();
+
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
@@ -71,21 +87,39 @@ public class MainActivity extends AppCompatActivity {
         bottomNavigationView = findViewById(R.id.bottom_navigation);
         navIndicator = findViewById(R.id.nav_indicator);
 
+        // Read saved tab FIRST (set by SettingsFragment before theme change)
+        final int savedTab = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getInt("current_tab", -1);
+        if (savedTab >= 0) {
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove("current_tab").apply();
+        }
+
         adapter = new MainPagerAdapter(this);
         viewPager.setAdapter(adapter);
         viewPager.setOffscreenPageLimit(3);
+
+        // Set initial page BEFORE registering any callbacks
+        // This way onPageScrolled will never fire for page 0
+        if (savedTab >= 0) {
+            viewPager.setCurrentItem(savedTab, false);
+        }
 
         navIndicator.post(() -> {
             int width = bottomNavigationView.getWidth() / 3;
             ViewGroup.LayoutParams lp = navIndicator.getLayoutParams();
             lp.width = width;
             navIndicator.setLayoutParams(lp);
+            // Also set indicator position immediately for restored tab
+            int currentPage = viewPager.getCurrentItem();
+            navIndicator.setTranslationX(currentPage * width);
         });
 
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
                 int width = navIndicator.getWidth();
+                if (width == 0 && bottomNavigationView != null && bottomNavigationView.getWidth() > 0) {
+                    width = bottomNavigationView.getWidth() / 3;
+                }
                 navIndicator.setTranslationX((position + positionOffset) * width);
             }
 
@@ -119,6 +153,15 @@ public class MainActivity extends AppCompatActivity {
             }
             return false;
         });
+
+        // Sync bottom nav checked state (without triggering listener)
+        if (savedTab >= 0) {
+            int menuId;
+            if (savedTab == 1) menuId = R.id.nav_server;
+            else if (savedTab == 2) menuId = R.id.nav_settings;
+            else menuId = R.id.nav_player;
+            bottomNavigationView.getMenu().findItem(menuId).setChecked(true);
+        }
 
         askPermissions();
         startAutoServer();

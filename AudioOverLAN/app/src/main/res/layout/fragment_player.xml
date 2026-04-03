@@ -97,7 +97,7 @@
                             android:layout_width="64dp"
                             android:layout_height="64dp"
                             android:layout_marginBottom="12dp"
-                            app:cardBackgroundColor="#0DFFFFFF"
+                            app:cardBackgroundColor="@color/icon_bg"
                             app:cardCornerRadius="20dp"
                             app:cardElevation="0dp">
 
@@ -156,6 +156,7 @@
                     android:src="@drawable/ic_wifi"
                     android:padding="12dp"
                     android:layout_marginStart="8dp"
+                    app:tint="@color/white"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="@+id/layoutInputArea"
                     app:layout_constraintBottom_toBottomOf="@+id/layoutInputArea" />

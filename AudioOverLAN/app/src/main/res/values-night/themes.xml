@@ -9,7 +9,7 @@
         <item name="colorSecondary">@color/accent_green</item>
         <item name="colorSecondaryVariant">@color/primary_blue</item>
         <item name="colorOnSecondary">@color/background_dark</item>
-        <!-- Status bar color. -->
+        <!-- Status bar and Navigation bar -->
         <item name="android:statusBarColor">@color/background_dark</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
         <item name="android:navigationBarColor">@color/background_dark</item>

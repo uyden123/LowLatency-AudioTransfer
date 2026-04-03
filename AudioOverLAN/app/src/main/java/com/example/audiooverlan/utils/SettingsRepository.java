@@ -34,7 +34,9 @@ public class SettingsRepository {
     public static final String KEY_TRANS_AAUDIO_ENABLED = "trans_aaudio_enabled";
     public static final String KEY_TRANS_EXCLUSIVE_MODE = "trans_exclusive_enabled";
     public static final String KEY_SELECTED_APPS = "selected_apps";
+    public static final String KEY_THEME_MODE = "theme_mode"; // 0: System, 1: Light, 2: Dark
     public static final String KEY_THEME_DARK = "theme_dark";
+
     public static final String KEY_LANGUAGE = "language";
     public static final String KEY_WAKE_LOCK = "wake_lock";
 
@@ -152,6 +154,9 @@ public class SettingsRepository {
 
     public boolean isThemeDark() { return prefs.getBoolean(KEY_THEME_DARK, true); }
     public void setThemeDark(boolean val) { prefs.edit().putBoolean(KEY_THEME_DARK, val).apply(); }
+
+    public int getThemeMode() { return prefs.getInt(KEY_THEME_MODE, 0); } // Default to System
+    public void setThemeMode(int val) { prefs.edit().putInt(KEY_THEME_MODE, val).apply(); }
 
     public String getLanguage() { return prefs.getString(KEY_LANGUAGE, "en"); }
     public void setLanguage(String val) { prefs.edit().putString(KEY_LANGUAGE, val).apply(); }

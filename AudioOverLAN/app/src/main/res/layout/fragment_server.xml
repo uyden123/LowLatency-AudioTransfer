@@ -124,7 +124,7 @@
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:background="@drawable/bg_connected_pill"
-                        android:backgroundTint="#0DFFFFFF"
+                        android:backgroundTint="@color/icon_bg"
                         android:padding="12dp"
                         android:src="@drawable/ic_mic"
                         app:tint="@color/primary_blue_light" />
@@ -192,7 +192,7 @@
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:background="@drawable/bg_connected_pill"
-                        android:backgroundTint="#0DFFFFFF"
+                        android:backgroundTint="@color/icon_bg"
                         android:padding="12dp"
                         android:src="@drawable/ic_broadcast"
                         app:tint="@color/accent_green" />

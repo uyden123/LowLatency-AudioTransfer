@@ -3,15 +3,19 @@
     <style name="Theme.AudioOverLAN" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/primary_blue</item>
-        <item name="colorPrimaryVariant">@color/background_dark</item>
+        <item name="colorPrimaryVariant">@color/primary_blue_light</item>
         <item name="colorOnPrimary">@color/background_dark</item>
         <!-- Secondary brand color. -->
         <item name="colorSecondary">@color/accent_green</item>
         <item name="colorSecondaryVariant">@color/primary_blue</item>
         <item name="colorOnSecondary">@color/background_dark</item>
-        <!-- Status bar color. -->
+        <!-- Surface colors (Theme-aware) -->
+        <item name="colorSurface">@color/card_background</item>
+        <item name="colorOnSurface">@color/white</item>
+        <item name="android:windowBackground">@color/background_dark</item>
+        <!-- Status bar and Navigation bar -->
         <item name="android:statusBarColor">@color/background_dark</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
         <item name="android:navigationBarColor">@color/background_dark</item>
     </style>
 
@@ -20,7 +24,7 @@
         <item name="backgroundTint">@android:color/transparent</item>
     </style>
 
-    <style name="MixerBottomSheetTheme" parent="Theme.Design.Light.BottomSheetDialog">
+    <style name="MixerBottomSheetTheme" parent="Theme.MaterialComponents.DayNight.BottomSheetDialog">
         <item name="bottomSheetStyle">@style/MixerBottomSheetStyle</item>
         <item name="android:windowIsFloating">false</item>
         <item name="android:windowBackground">@android:color/transparent</item>
