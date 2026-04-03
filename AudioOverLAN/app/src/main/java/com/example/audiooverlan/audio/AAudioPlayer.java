@@ -169,6 +169,15 @@ public class AAudioPlayer {
         }
     }
 
+    public int getLatestSamples(short[] outBuffer, int maxLength) {
+        if (!isStarted) return 0;
+        try {
+            return nativeGetLatestSamples(outBuffer, maxLength);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     public boolean isStarted() {
         return isStarted;
     }
@@ -183,4 +192,5 @@ public class AAudioPlayer {
     private native int nativeGetBufferedFrames();
     private native boolean nativeIsAAudioSupported();
     private native String nativeGetStreamInfo();
+    private native int nativeGetLatestSamples(short[] outBuffer, int maxLength);
 }

@@ -205,7 +205,10 @@ public class PlayerAudioPipeline {
                             if (isPlaying) writeToOutput(resampleRef[0], 0, outCount);
                         }
                     }
-                    latestSamples = pcmBufferWorkspace;
+                    if (latestSamples == null || latestSamples.length != totalSamples) {
+                        latestSamples = new short[totalSamples];
+                    }
+                    System.arraycopy(pcmBufferWorkspace, 0, latestSamples, 0, totalSamples);
                 }
             }
             jitterBuffer.recyclePacket(packet);
@@ -430,7 +433,18 @@ public class PlayerAudioPipeline {
     }
 
     public JitterBuffer getJitterBuffer() { return jitterBuffer; }
-    public short[] getLatestSamples() { return latestSamples; }
+    public short[] getLatestSamples() { 
+        if (useAAudio && aaudioPlayer != null && aaudioPlayer.isStarted()) {
+            int copied = aaudioPlayer.getLatestSamples(pcmBufferWorkspace, pcmBufferWorkspace.length);
+            if (copied > 0) {
+                if (latestSamples == null || latestSamples.length != copied) {
+                    latestSamples = new short[copied];
+                }
+                System.arraycopy(pcmBufferWorkspace, 0, latestSamples, 0, copied);
+            }
+        }
+        return latestSamples; 
+    }
     public long getCurrentLatency() { return currentLatencyVal; }
     public long getMaxLatency() { return maxLatencyVal; }
     public double getAvgLatency() { return avgLatencyVal; }

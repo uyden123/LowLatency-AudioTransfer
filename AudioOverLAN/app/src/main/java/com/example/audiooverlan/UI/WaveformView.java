@@ -59,17 +59,14 @@ public class WaveformView extends View {
         path.reset();
         
         // We might be getting stereo (LRLR), so let's just draw one channel or mix
-        int step = samples.length / width;
-        if (step < 1) step = 1;
+        float step = (float) samples.length / width;
 
-        float lastX = 0;
-        float lastY = midY;
         path.moveTo(0, midY);
 
         // Down-sample for performance: draw every 2 pixels
         for (int i = 0; i < width; i += 2) {
-            int sampleIdx = i * step;
-            if (sampleIdx >= samples.length) break;
+            int sampleIdx = (int) (i * step);
+            if (sampleIdx >= samples.length) sampleIdx = samples.length - 1;
 
             float x = i;
             // Normalize short (-32768 to 32767) to fit height

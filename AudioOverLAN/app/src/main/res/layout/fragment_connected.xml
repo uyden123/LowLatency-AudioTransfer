@@ -1,76 +1,89 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_dark">
+    android:background="@color/background_dark"
+    android:padding="20dp">
 
-    <LinearLayout
+    <!-- Combined Header Section -->
+    <RelativeLayout
+        android:id="@+id/tvHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="10dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
-        <!-- Combined Header Section -->
-        <RelativeLayout
-            android:layout_width="match_parent"
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="32dp">
+            android:text="@string/player"
+            android:textColor="@color/white"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true" />
+
+        <!-- Connected Status Badge -->
+        <LinearLayout
+            android:id="@+id/statusBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:background="@drawable/bg_connected_pill"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp">
+
+            <View
+                android:id="@+id/statusDot"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/bg_status_dot"
+                android:backgroundTint="@color/accent_green" />
 
             <TextView
+                android:id="@+id/tvStatusText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/player"
-                android:textColor="@color/white"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:layout_alignParentStart="true"
-                android:layout_centerVertical="true" />
+                android:layout_marginStart="8dp"
+                android:text="@string/connected"
+                android:textColor="@color/accent_green"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
 
-            <!-- Connected Status Badge -->
-            <LinearLayout
-                android:id="@+id/statusBadge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:background="@drawable/bg_connected_pill"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="8dp">
+        <ImageButton
+            android:id="@+id/btnStop"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="@drawable/bg_connected_pill"
+            android:backgroundTint="@color/card_background"
+            android:src="@drawable/ic_power"
+            android:scaleType="centerInside"
+            app:tint="@color/accent_red"
+            android:padding="12dp" />
 
-                <View
-                    android:id="@+id/statusDot"
-                    android:layout_width="10dp"
-                    android:layout_height="10dp"
-                    android:background="@drawable/bg_status_dot"
-                    android:backgroundTint="@color/accent_green" />
+    </RelativeLayout>
 
-                <TextView
-                    android:id="@+id/tvStatusText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/connected"
-                    android:textColor="@color/accent_green"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:scrollbars="none"
+        app:layout_constraintTop_toBottomOf="@id/tvHeader"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-            <ImageButton
-                android:id="@+id/btnStop"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:background="@drawable/bg_connected_pill"
-                android:backgroundTint="@color/card_background"
-                android:src="@drawable/ic_power"
-                android:scaleType="centerInside"
-                app:tint="@color/accent_red"
-                android:padding="12dp" />
-
-        </RelativeLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="20dp">
 
         <!-- Latency Visualizer -->
         <com.google.android.material.card.MaterialCardView
@@ -603,6 +616,7 @@
                 app:trackTint="@color/switch_track_selector" />
         </RelativeLayout>
 
-    </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
 
-</androidx.core.widget.NestedScrollView>
+</androidx.constraintlayout.widget.ConstraintLayout>

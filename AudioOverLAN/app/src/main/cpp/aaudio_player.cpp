@@ -448,6 +448,19 @@ Java_com_example_audiooverlan_audio_AAudioPlayer_nativeIsAAudioSupported(
     return oboe::AudioStreamBuilder::isAAudioSupported() ? JNI_TRUE : JNI_FALSE;
 }
 
+JNIEXPORT jint JNICALL
+Java_com_example_audiooverlan_audio_AAudioPlayer_nativeGetLatestSamples(
+        JNIEnv* env, jobject thiz, jshortArray outBuffer, jint maxLength) {
+    if (!gIsRunning.load() || !gPlayer) return 0;
+    
+    int size = gDecodeBuffer.size();
+    if (size == 0) return 0;
+    
+    int toCopy = std::min((int)maxLength, size);
+    env->SetShortArrayRegion(outBuffer, 0, toCopy, gDecodeBuffer.data());
+    return toCopy;
+}
+
 JNIEXPORT jstring JNICALL
 Java_com_example_audiooverlan_audio_AAudioPlayer_nativeGetStreamInfo(
         JNIEnv* env, jobject thiz) {
