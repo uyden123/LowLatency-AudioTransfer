@@ -54,14 +54,14 @@ namespace AudioTransfer.Core.Facade
             _server.StartWasapiToAndroid(port, deviceId, instanceName);
         }
 
-        public async Task<bool> StartAndroidMicListenerAsync(string ip, int port, string? deviceId)
+        public async Task<bool> StartAndroidMicListenerAsync(string ip, int port, string? deviceId, string? deviceName = null)
         {
             CurrentMode = StreamingMode.AndroidMicListener;
             _player = new PlayerEngine();
             _player.OnClientConnected += (s, e) => OnClientConnected?.Invoke(this, e);
             _player.OnClientDisconnected += (s, e) => OnClientDisconnected?.Invoke(this, e);
             _player.OnStopped += (s, e) => OnStopped?.Invoke(this, EventArgs.Empty);
-            return await _player.StartAndroidMicListenerAsync(ip, port, deviceId);
+            return await _player.StartAndroidMicListenerAsync(ip, port, deviceId, deviceName);
         }
 
         public void Stop()

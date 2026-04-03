@@ -78,9 +78,29 @@ public class UdpMicBroadcaster {
         MicSession session = sessions.get(key);
         if (session == null) {
             session = new MicSession(address, port, this::sendUdpInternal, this::handleControlMessage);
+            session.setStateChangeListener(newState -> refreshConnectedState());
             sessions.put(key, session);
         }
         return session;
+    }
+
+    private void refreshConnectedState() {
+        boolean anyAuthenticated = false;
+        for (MicSession s : sessions.values()) {
+            if (s.isActive() && s.getState() == MicSession.State.Authenticated) {
+                anyAuthenticated = true;
+                break;
+            }
+        }
+        
+        boolean old = isConnected.getAndSet(anyAuthenticated);
+        if (old != anyAuthenticated && connectionListener != null) {
+            if (anyAuthenticated) {
+                connectionListener.onConnected();
+            } else {
+                connectionListener.onDisconnected();
+            }
+        }
     }
 
     public void forceAddClient(InetAddress address, int port) {
@@ -138,6 +158,7 @@ public class UdpMicBroadcaster {
         seqNum = 0;
         timestampSamples = 0;
         audioPacket = new DatagramPacket(audioSendBuffer, audioSendBuffer.length);
+        refreshConnectedState(); // Initial check
 
         connectionMonitorThread = new Thread(() -> {
             while (isRunning.get()) {
@@ -160,14 +181,7 @@ public class UdpMicBroadcaster {
                     }
 
                     for (String key : toRemove) sessions.remove(key);
-
-                    if (anyAuthenticated && !isConnected.get()) {
-                        isConnected.set(true);
-                        if (connectionListener != null) connectionListener.onConnected();
-                    } else if (!anyAuthenticated && isConnected.get()) {
-                        isConnected.set(false);
-                        if (connectionListener != null) connectionListener.onDisconnected();
-                    }
+                    refreshConnectedState();
                 } catch (InterruptedException e) {
                     break;
                 } catch (Exception e) {
@@ -239,6 +253,19 @@ public class UdpMicBroadcaster {
     public void stop() {
         if (!isRunning.getAndSet(false)) return;
 
+        if (socket != null && !socket.isClosed()) {
+            try {
+                byte[] disconnectPacket = new byte[3];
+                disconnectPacket[2] = (byte) MicSession.CODEC_DISCONNECT;
+                for (MicSession session : sessions.values()) {
+                    if (session.getState() == MicSession.State.Authenticated) {
+                        DatagramPacket p = new DatagramPacket(disconnectPacket, disconnectPacket.length, session.getAddress(), session.getPort());
+                        for (int i = 0; i < 2; i++) socket.send(p); // Send twice for reliability
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
         if (receiveThread != null) receiveThread.interrupt();
         if (connectionMonitorThread != null) connectionMonitorThread.interrupt();
         
@@ -254,4 +281,19 @@ public class UdpMicBroadcaster {
     public boolean isRunning() { return isRunning.get(); }
     public long getPacketsSent() { return packetsSent.get(); }
     public long getBytesSent() { return bytesSent.get(); }
+
+    public List<com.example.audiooverlan.viewmodels.TransmitterState.ClientInfo> getActiveClients() {
+        List<com.example.audiooverlan.viewmodels.TransmitterState.ClientInfo> activeClients = new ArrayList<>();
+        for (MicSession session : sessions.values()) {
+            if (session.isActive() && session.getState() == MicSession.State.Authenticated) {
+                String ip = session.getAddress().getHostAddress();
+                String name = session.getDeviceName();
+                if (name == null || name.isEmpty()) {
+                    name = ip;
+                }
+                activeClients.add(new com.example.audiooverlan.viewmodels.TransmitterState.ClientInfo(ip, name));
+            }
+        }
+        return activeClients;
+    }
 }

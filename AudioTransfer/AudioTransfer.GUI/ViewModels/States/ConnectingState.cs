@@ -24,7 +24,7 @@ public class ConnectingState : IPlayerState
         {
             // Move heavy initialization to background thread to avoid blocking UI
             bool success = await Task.Run(() => 
-                context.PlayerEngine.StartAndroidMicListenerAsync(_targetIp, _port, context.SelectedOutputDevice?.Id));
+                context.PlayerEngine.StartAndroidMicListenerAsync(_targetIp, _port, context.SelectedOutputDevice?.Id, context.DeviceName));
             
             CoreLogger.Instance.Log($"[ConnectingState] StartAndroidMicListenerAsync result: {success}");
             

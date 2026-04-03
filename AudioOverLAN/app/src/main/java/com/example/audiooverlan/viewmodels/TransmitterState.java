@@ -17,6 +17,15 @@ public abstract class TransmitterState {
         @NonNull @Override public String toString() { return "Starting"; }
     }
 
+    public static final class ClientInfo {
+        public final String ip;
+        public final String deviceName;
+        public ClientInfo(String ip, String deviceName) {
+            this.ip = ip;
+            this.deviceName = deviceName;
+        }
+    }
+
     public static final class Transmitting extends TransmitterState {
         public final String targetIp;
         public final long packetsSent;
@@ -25,8 +34,9 @@ public abstract class TransmitterState {
         public final boolean isConnected;
         public final boolean isBluetoothAvailable;
         public final String activeSource;
+        public final java.util.List<ClientInfo> clients;
 
-        public Transmitting(String targetIp, long packetsSent, double bitrateKbps, long uptimeMillis, boolean isConnected, boolean isBluetoothAvailable, String activeSource) {
+        public Transmitting(String targetIp, long packetsSent, double bitrateKbps, long uptimeMillis, boolean isConnected, boolean isBluetoothAvailable, String activeSource, java.util.List<ClientInfo> clients) {
             this.targetIp = targetIp;
             this.packetsSent = packetsSent;
             this.bitrateKbps = bitrateKbps;
@@ -34,6 +44,7 @@ public abstract class TransmitterState {
             this.isConnected = isConnected;
             this.isBluetoothAvailable = isBluetoothAvailable;
             this.activeSource = activeSource;
+            this.clients = clients;
         }
 
         @NonNull @Override public String toString() { 

@@ -16,6 +16,7 @@ namespace AudioTransfer.Core.Network
         private readonly ConcurrentDictionary<IPEndPoint, UdpClientSession> _clients = new();
         private readonly Action<byte[], IPEndPoint> _udpSender;
         private readonly Action<string> _logger;
+        private string _deviceName = Environment.MachineName;
 
         // Codec constants from ServerEngine
         private const byte CODEC_SYN = 0xFA;          // 250
@@ -101,6 +102,7 @@ namespace AudioTransfer.Core.Network
                     session.State = HandshakeState.Authenticated;
                     session.LastSeenUtc = DateTime.UtcNow;
                     _logger($"[Manager] Handshake COMPLETE: {sender} is now AUTHENTICATED.");
+                    SendDeviceName(sender);
                 }
             }
         }
@@ -121,6 +123,15 @@ namespace AudioTransfer.Core.Network
             {
                 session.State = HandshakeState.Authenticated;
                 _logger($"[Manager] {sender} promoted to AUTHENTICATED via activity/heartbeat.");
+                SendDeviceName(sender);
+            }
+        }
+
+        private void SendDeviceName(IPEndPoint ep)
+        {
+            byte[] packet = Encoding.UTF8.GetBytes("DEVICE_NAME:" + _deviceName);
+            for (int i = 0; i < 3; i++) {
+                _udpSender(packet, ep);
             }
         }
 
@@ -134,6 +145,7 @@ namespace AudioTransfer.Core.Network
 
         public void StartMaintenance(string deviceName, CancellationToken token)
         {
+            _deviceName = deviceName;
             _ = Task.Run(async () =>
             {
                 byte[] deviceNamePacket = Encoding.UTF8.GetBytes("DEVICE_NAME:" + deviceName);

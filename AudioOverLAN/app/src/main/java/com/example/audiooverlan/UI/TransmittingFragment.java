@@ -217,9 +217,9 @@ public class TransmittingFragment extends Fragment {
         viewModel.getTransmitterState().observe(getViewLifecycleOwner(), state -> {
             if (state instanceof TransmitterState.Transmitting) {
                 TransmitterState.Transmitting t = (TransmitterState.Transmitting) state;
-                List<String> clients = new ArrayList<>();
-                if (t.isConnected) {
-                    clients.add(t.targetIp);
+                List<TransmitterState.ClientInfo> clients = t.clients;
+                if (clients == null) {
+                    clients = new ArrayList<>();
                 }
                 updateClientsUI(clients);
                 tvActiveSource.setText(t.activeSource.toUpperCase());
@@ -229,7 +229,7 @@ public class TransmittingFragment extends Fragment {
         });
     }
 
-    private void updateClientsUI(List<String> clients) {
+    private void updateClientsUI(List<TransmitterState.ClientInfo> clients) {
         TransitionManager.beginDelayedTransition(llMainContent);
         
         if (clients.isEmpty()) {
@@ -264,9 +264,9 @@ public class TransmittingFragment extends Fragment {
     }
 
     private static class ClientAdapter extends RecyclerView.Adapter<ClientAdapter.ViewHolder> {
-        private List<String> clients = new ArrayList<>();
+        private List<TransmitterState.ClientInfo> clients = new ArrayList<>();
 
-        public void setClients(List<String> clients) {
+        public void setClients(List<TransmitterState.ClientInfo> clients) {
             this.clients = clients;
             notifyDataSetChanged();
         }
@@ -280,9 +280,9 @@ public class TransmittingFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            String ip = clients.get(position);
-            holder.tvIp.setText(ip);
-            holder.tvPing.setText("Connected"); // Mock ping for now
+            TransmitterState.ClientInfo client = clients.get(position);
+            holder.tvIp.setText(client.deviceName);
+            holder.tvPing.setText(client.ip);
         }
 
         @Override

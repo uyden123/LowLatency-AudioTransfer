@@ -58,7 +58,7 @@ namespace AudioTransfer.Core.Facade
 
         #region Mode 2: Android Mic → PC (UDP with Jitter/PLC/Resample)
 
-        public virtual async Task<bool> StartAndroidMicListenerAsync(string androidIp, int androidPort = 5003, string? playbackDeviceId = null)
+        public virtual async Task<bool> StartAndroidMicListenerAsync(string androidIp, int androidPort = 5003, string? playbackDeviceId = null, string? deviceName = null)
         {
             if (_running) throw new InvalidOperationException("Already running.");
             _running = true;
@@ -78,7 +78,7 @@ namespace AudioTransfer.Core.Facade
                 targetEp = new IPEndPoint(addr, androidPort);
             }
 
-            _udpMicReceiver = new UdpMicReceiver(androidPort, _micJitterBuffer, targetEp);
+            _udpMicReceiver = new UdpMicReceiver(androidPort, _micJitterBuffer, targetEp, deviceName);
             _udpMicReceiver.OnAndroidConnected += (s, e) => OnClientConnected?.Invoke(this, _udpMicReceiver.ConnectedEndpoint?.ToString() ?? "Android");
             _udpMicReceiver.OnAndroidDisconnected += (s, e) => OnClientDisconnected?.Invoke(this, "Android");
             _udpMicReceiver.Start();

@@ -291,7 +291,8 @@ public class AudioTransmitterService extends Service {
             System.currentTimeMillis() - startTimeMillis,
             connectionManager.isConnected(),
             btAvailable,
-            sourceName
+            sourceName,
+            connectionManager.getActiveClients()
         ));
     }
 

@@ -31,6 +31,7 @@ namespace AudioTransfer.Core.Network
         private const byte CODEC_SYN = 250;
         private const byte CODEC_SYN_ACK = 251;
         private const byte CODEC_ACK_HANDSHAKE = 252;
+        private const byte CODEC_DISCONNECT = 253;
         private const byte CODEC_ACK = 254;
         private const byte CODEC_CONTROL = 255;
 
@@ -75,11 +76,14 @@ namespace AudioTransfer.Core.Network
         public long PacketsReceived => Interlocked.Read(ref _packetsReceived);
         public long BytesReceived => Interlocked.Read(ref _bytesReceived);
 
-        public UdpMicReceiver(int listenPort, MicJitterBuffer jitterBuffer, IPEndPoint? targetEp = null)
+        private readonly string _deviceName;
+
+        public UdpMicReceiver(int listenPort, MicJitterBuffer jitterBuffer, IPEndPoint? targetEp = null, string? deviceName = null)
         {
             _listenPort = listenPort;
             _jitterBuffer = jitterBuffer;
             _targetEp = targetEp;
+            _deviceName = string.IsNullOrEmpty(deviceName) ? Environment.MachineName : deviceName;
         }
 
         public void Start()
@@ -186,8 +190,34 @@ namespace AudioTransfer.Core.Network
                             }
                         }
                         SendBinaryHandshake(CODEC_ACK_HANDSHAKE, remoteIpEp);
+
+                        // Send DEVICE_NAME immediately after handshake. Send a few times for UDP reliability.
+                        try {
+                            if (_udpClient != null && _udpClient.Client != null) {
+                                byte[] deviceNamePacket = Encoding.UTF8.GetBytes("DEVICE_NAME:" + _deviceName);
+                                for (int i = 0; i < 3; i++) {
+                                    _udpClient.Client.SendTo(deviceNamePacket, deviceNamePacket.Length, SocketFlags.None, remoteIpEp);
+                                }
+                            }
+                        } catch { }
+
                         continue;
                     }
+                    if (codec == CODEC_DISCONNECT)
+                    {
+                        lock (_epLock)
+                        {
+                            if (_androidEp != null && _androidEp.Equals(remoteIpEp))
+                            {
+                                _state = HandshakeState.Disconnected;
+                                _androidEp = null;
+                                CoreLogger.Instance.Log($"[UdpMicReceiver] DISCONNECT received from {remoteIpEp}. Connection closed.");
+                                OnAndroidDisconnected?.Invoke(this, EventArgs.Empty);
+                            }
+                        }
+                        continue;
+                    }
+
                     if (codec == CODEC_ACK)
                     {
                         if (length >= 23)
@@ -281,7 +311,6 @@ namespace AudioTransfer.Core.Network
 
                     if(_state == HandshakeState.Authenticated && _androidEp != null)
                     {
-                        //CoreLogger.Instance.Log($"[UdpMicReceiver] Sending Heartbeat to {_androidEp}");
                         SendHeartbeat();
                     }
                 }
@@ -358,6 +387,18 @@ namespace AudioTransfer.Core.Network
         public void Stop()
         {
             if (!_isRunning) return;
+
+            // Notify android peer immediately before closing
+            try {
+                if (_udpClient != null && _androidEp != null) {
+                    byte[] disconnectPacket = new byte[3];
+                    disconnectPacket[2] = CODEC_DISCONNECT;
+                    for (int i = 0; i < 3; i++) {
+                        _udpClient.Client.SendTo(disconnectPacket, disconnectPacket.Length, System.Net.Sockets.SocketFlags.None, _androidEp);
+                    }
+                }
+            } catch { }
+
             _isRunning = false;
 
             CoreLogger.Instance.Log("[UdpMicReceiver] Stopping...");

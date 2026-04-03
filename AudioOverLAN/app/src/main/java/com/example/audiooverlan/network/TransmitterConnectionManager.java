@@ -70,4 +70,8 @@ public class TransmitterConnectionManager {
     public long getBytesSent() {
         return udpSender != null ? udpSender.getBytesSent() : 0;
     }
+
+    public java.util.List<com.example.audiooverlan.viewmodels.TransmitterState.ClientInfo> getActiveClients() {
+        return udpSender != null ? udpSender.getActiveClients() : new java.util.ArrayList<>();
+    }
 }
