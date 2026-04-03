@@ -1,6 +1,8 @@
 package com.example.audiooverlan.UI;
 
 import android.Manifest;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -12,6 +14,7 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,15 +35,9 @@ public class ServerFragment extends Fragment {
     private static final int REQ_RECORD_AUDIO = 1001;
 
     private TextView tvMyServerIP;
-    private TextView tvServerStatus;
+    private ImageButton btnCopyAddress;
+
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Runnable statusRunnable = new Runnable() {
-        @Override
-        public void run() {
-            updateStatusText();
-            handler.postDelayed(this, 1000);
-        }
-    };
 
     @Nullable
     @Override
@@ -48,11 +45,12 @@ public class ServerFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_server, container, false);
 
         tvMyServerIP = view.findViewById(R.id.tvMyServerIP);
-        tvServerStatus = view.findViewById(R.id.tvServerStatus);
+        btnCopyAddress = view.findViewById(R.id.btnCopyAddressSv);
         MaterialCardView cardMicrophone = view.findViewById(R.id.cardMicrophone);
         MaterialCardView cardApps = view.findViewById(R.id.cardApps);
+        String ip = getLocalIpAddress();
 
-        tvMyServerIP.setText(getLocalIpAddress());
+        tvMyServerIP.setText(ip);
 
         cardMicrophone.setOnClickListener(v -> {
             if (AudioTransmitterService.isServiceRunning) {
@@ -78,23 +76,19 @@ public class ServerFragment extends Fragment {
             }
         });
 
+        btnCopyAddress.setOnClickListener(v -> {
+            ClipboardManager clipboard = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText("Host IP", ip);
+            clipboard.setPrimaryClip(clip);
+            Toast.makeText(getContext(), "Address copied to clipboard", Toast.LENGTH_SHORT).show();
+        });
+
         return view;
     }
 
     private void startAppsStreaming() {
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).requestAppCapture();
-        }
-    }
-
-    private void updateStatusText() {
-        if (!isAdded()) return;
-        if (AudioTransmitterService.isServiceRunning) {
-            tvServerStatus.setText("Transmitting...");
-            tvServerStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.accent_green));
-        } else {
-            tvServerStatus.setText("Ready to Broadcast");
-            tvServerStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_gray));
         }
     }
 
@@ -145,12 +139,10 @@ public class ServerFragment extends Fragment {
     public void onResume() {
         super.onResume();
         tvMyServerIP.setText(getLocalIpAddress());
-        handler.post(statusRunnable);
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        handler.removeCallbacks(statusRunnable);
     }
 }

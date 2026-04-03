@@ -539,39 +539,6 @@
             android:textSize="13sp"
             android:layout_marginBottom="24dp" />
 
-        <!-- STREAM INFO SECTION -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="AUDIO FORMAT"
-            android:textColor="@color/text_gray"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="16dp" />
-
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Format"
-                android:textColor="@color/text_gray" />
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:text="Opus (48kHz Stereo)"
-                android:textColor="@color/white"
-                android:textStyle="bold"
-                android:background="@drawable/bg_connected_pill"
-                android:backgroundTint="#0DFFFFFF"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="4dp"
-                android:textSize="12sp"/>
-        </RelativeLayout>
-
         <!-- STREAM CONFIGURATION SECTION -->
         <TextView
             android:layout_width="wrap_content"
@@ -615,6 +582,26 @@
             app:trackColorActive="@color/primary_blue"
             app:trackColorInactive="@color/card_background"
             android:layout_marginBottom="24dp" />
+
+        <!-- DRC (Dynamic Range Compression) Toggle -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:text="Dynamic Range Compression"
+                android:textColor="@color/text_gray" />
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchDrc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                app:thumbTint="@color/switch_thumb_selector"
+                app:trackTint="@color/switch_track_selector" />
+        </RelativeLayout>
 
     </LinearLayout>
 

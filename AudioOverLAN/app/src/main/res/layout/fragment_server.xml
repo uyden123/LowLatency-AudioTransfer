@@ -36,27 +36,27 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
-                android:text="YOUR ADDRESS"
+                android:text="HOST ADDRESS"
                 android:textColor="@color/text_gray"
                 android:textSize="12sp"
                 android:letterSpacing="0.1"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+                android:layout_marginTop="16dp"/>
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:layout_marginBottom="40dp"
+                android:layout_marginBottom="32dp"
                 app:cardBackgroundColor="@color/card_background"
                 app:cardCornerRadius="24dp"
                 app:strokeWidth="0dp">
 
-                <LinearLayout
+                <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:padding="24dp">
+                    android:paddingHorizontal="24dp"
+                    android:paddingVertical="16dp">
 
                     <TextView
                         android:id="@+id/tvMyServerIP"
@@ -64,18 +64,31 @@
                         android:layout_height="wrap_content"
                         android:text="192.168.1.105"
                         android:textColor="@color/white"
-                        android:textSize="28sp"
+                        android:textSize="26sp"
                         android:textStyle="bold" />
 
                     <TextView
+                        android:id="@+id/tvHostPort"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="Port: 5003"
+                        android:layout_alignBaseline="@id/tvMyServerIP"
+                        android:layout_toEndOf="@id/tvMyServerIP"
+                        android:text=":5050"
+                        android:visibility="gone"
                         android:textColor="@color/text_gray"
-                        android:textSize="14sp" />
+                        android:textSize="18sp" />
 
-                </LinearLayout>
+                    <ImageButton
+                        android:id="@+id/btnCopyAddressSv"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_copy"
+                        app:tint="@color/primary_blue_light" />
+
+                </RelativeLayout>
 
             </com.google.android.material.card.MaterialCardView>
 
@@ -232,7 +245,8 @@
                 android:gravity="center"
                 android:text="Ready to Broadcast"
                 android:textColor="@color/text_gray"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:visibility="gone"/>
 
         </LinearLayout>
     </ScrollView>

@@ -74,7 +74,8 @@
             android:layout_centerVertical="true"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_person_remove"
-            app:tint="@color/text_gray" />
+            app:tint="@color/text_gray"
+            android:visibility="gone"/>
 
     </RelativeLayout>
 

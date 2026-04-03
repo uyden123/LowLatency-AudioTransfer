@@ -2,6 +2,7 @@ package com.example.audiooverlan.services;
 
 import android.app.Service;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -44,6 +45,7 @@ public class AudioService extends Service {
     private AudioFocusHandler focusHandler;
     private AudioDeviceMonitor deviceMonitor;
     private WakeLockManager wakeLockManager;
+    private ScreenWakeReceiver screenWakeReceiver;
 
     private boolean useAAudio = false;
     private boolean isExclusiveMode = false;
@@ -68,9 +70,14 @@ public class AudioService extends Service {
         focusHandler = new AudioFocusHandler(this);
         deviceMonitor = new AudioDeviceMonitor(this);
         wakeLockManager = new WakeLockManager(this);
+        screenWakeReceiver = new ScreenWakeReceiver();
 
         wakeLockManager.acquireLocks();
         setupMediaSession();
+
+        // Register screen wake receiver to recover audio on Xiaomi/MIUI
+        IntentFilter screenFilter = new IntentFilter(Intent.ACTION_SCREEN_ON);
+        registerReceiver(screenWakeReceiver, screenFilter);
         deviceMonitor.register();
     }
 
@@ -162,6 +169,7 @@ public class AudioService extends Service {
         pipeline = new PlayerAudioPipeline(config, ip);
         focusHandler.setPipeline(pipeline);
         deviceMonitor.setPipeline(pipeline);
+        screenWakeReceiver.setPipeline(pipeline);
 
         connectionManager = new PlayerConnectionManager(ip, port, pipeline.getJitterBuffer(), new PlayerConnectionManager.ConnectionListener() {
             @Override
@@ -246,6 +254,10 @@ public class AudioService extends Service {
 
         deviceMonitor.unregister();
         focusHandler.abandonFocus();
+
+        if (screenWakeReceiver != null) {
+            unregisterReceiver(screenWakeReceiver);
+        }
         
         super.onDestroy();
         PlayerStateRepository.getInstance().updateState(PlayerState.Disconnected.INSTANCE);

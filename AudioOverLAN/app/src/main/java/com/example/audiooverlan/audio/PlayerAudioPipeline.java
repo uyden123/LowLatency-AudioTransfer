@@ -388,6 +388,47 @@ public class PlayerAudioPipeline {
         jitterBuffer.clear();
     }
 
+    /**
+     * Deep health check for whether audio is actually flowing.
+     * Catches MIUI zombied streams where isStarted is true but the
+     * native Oboe stream has been disconnected/paused by the OS.
+     *
+     * Checks 3 signals:
+     * 1. Engine null → output was explicitly stopped
+     * 2. Native stream dead → getLatencyMs() returns -1
+     * 3. Buffer stall → jitter buffer has data but ring buffer is empty
+     */
+    public boolean isAudioOutputAlive() {
+        synchronized (outputLock) {
+            if (useAAudio) {
+                if (aaudioPlayer == null) return false;
+                if (!aaudioPlayer.isStarted()) return false;
+
+                // Deep check 1: Native stream validity
+                // getLatencyMs() returns -1 if gIsRunning is false or stream is null
+                double latency = aaudioPlayer.getLatencyMs();
+                if (latency < 0) {
+                    Log.w(TAG, "Audio health check: native stream reports invalid latency");
+                    return false;
+                }
+
+                // Deep check 2: Buffer stall detection
+                // If jitter buffer has packets but AAudio ring buffer is empty,
+                // audio is not flowing through the pipeline
+                int jbSize = jitterBuffer.size();
+                int ringFrames = aaudioPlayer.getBufferedFrames();
+                if (jbSize > 3 && ringFrames == 0) {
+                    Log.w(TAG, "Audio health check: buffer stall detected (jb=" + jbSize + ", ring=0)");
+                    return false;
+                }
+
+                return true;
+            } else {
+                return audioTrack != null;
+            }
+        }
+    }
+
     public JitterBuffer getJitterBuffer() { return jitterBuffer; }
     public short[] getLatestSamples() { return latestSamples; }
     public long getCurrentLatency() { return currentLatencyVal; }

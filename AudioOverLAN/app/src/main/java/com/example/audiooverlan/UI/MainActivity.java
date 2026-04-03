@@ -143,11 +143,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onTransmitterStateChanged() {
-        if (adapter != null) {
-            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
-                adapter.notifyItemChanged(1);
-            });
-        }
+        // Now handled by ServerHostFragment observing TransmitterViewModel
     }
 
     private void askPermissions() {

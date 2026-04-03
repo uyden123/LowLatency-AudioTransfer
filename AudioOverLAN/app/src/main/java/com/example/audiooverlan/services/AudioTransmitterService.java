@@ -60,6 +60,8 @@ public class AudioTransmitterService extends Service {
     private Intent projectionData;
     private long startTimeMillis;
     private boolean isInstanceRunning = true;
+    private final Object restartLock = new Object();
+    private volatile boolean isRestarting = false;
 
     public static String getSourceMode() {
         if (instance != null) return instance.sourceMode;
@@ -283,7 +285,7 @@ public class AudioTransmitterService extends Service {
         }
 
         TransmitterStateRepository.getInstance().updateState(new TransmitterState.Transmitting(
-            targetIp != null ? targetIp : "Waiting...",
+            targetIp != null ? targetIp : "PC",
             packets,
             bitrate,
             System.currentTimeMillis() - startTimeMillis,
@@ -315,18 +317,32 @@ public class AudioTransmitterService extends Service {
 
     public void requestAudioSourceRestart() {
         if (pipeline != null) {
-            pipeline.stop();
-            loadLegacyStaticFields();
-            AudioConfig config = new AudioConfig.Builder()
-                    .sampleRate(SAMPLE_RATE)
-                    .channels(CHANNELS)
-                    .audioFormat(AudioFormat.ENCODING_PCM_16BIT)
-                    .exclusiveMode(isExclusiveMode)
-                    .useAAudio(useAAudio)
-                    .deviceId(preferredDeviceId)
-                    .build();
-            updateStrategies(config);
-            pipeline.start();
+            new Thread(() -> {
+                synchronized (restartLock) {
+                    if (isRestarting) return;
+                    isRestarting = true;
+                }
+                try {
+                    pipeline.stop();
+                    // Small delay to ensure hardware is released
+                    try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+                    
+                    AudioConfig config = new AudioConfig.Builder()
+                            .sampleRate(SAMPLE_RATE)
+                            .channels(CHANNELS)
+                            .audioFormat(AudioFormat.ENCODING_PCM_16BIT)
+                            .exclusiveMode(isExclusiveMode)
+                            .useAAudio(useAAudio)
+                            .deviceId(preferredDeviceId)
+                            .build();
+                    updateStrategies(config);
+                    pipeline.start();
+                } finally {
+                    synchronized (restartLock) {
+                        isRestarting = false;
+                    }
+                }
+            }, "PipelineRestartThread").start();
         }
     }
 

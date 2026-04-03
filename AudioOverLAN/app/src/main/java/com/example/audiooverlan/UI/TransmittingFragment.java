@@ -31,6 +31,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.switchmaterial.SwitchMaterial;
+import androidx.transition.TransitionManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,17 +41,22 @@ public class TransmittingFragment extends Fragment {
 
     private TextView tvHostAddress;
     private TextView tvHostPort;
+    private TextView tvActiveSource;
     private ImageButton btnCopyAddress;
     private SwitchMaterial swVolumeBoost;
     private TextView tvBoostLevelValue;
     private Slider sliderVolumeLevel;
-    private MaterialButtonToggleGroup toggleNS;
+    private View rowNsOff, rowNsRNNoise, rowNsDeepFilter;
+    private View indicatorNsOff, indicatorNsRNNoise, indicatorNsDeepFilter;
     private TextView tvNsStrengthValue;
     private Slider sliderNoiseLevel;
     private TextView tvActiveCount;
     private RecyclerView rvClients;
-    private TextView tvNoClients;
+    private View vNoClients;
     private MaterialButton btnStopBroadcast;
+    private View llNsStrength;
+    private View llBoostControls;
+    private ViewGroup llMainContent;
 
     private ClientAdapter clientAdapter;
     private TransmitterViewModel viewModel;
@@ -65,17 +71,26 @@ public class TransmittingFragment extends Fragment {
         // Bindings
         tvHostAddress = view.findViewById(R.id.tvHostAddress);
         tvHostPort = view.findViewById(R.id.tvHostPort);
+        tvActiveSource = view.findViewById(R.id.tvActiveSource);
         btnCopyAddress = view.findViewById(R.id.btnCopyAddress);
         swVolumeBoost = view.findViewById(R.id.swVolumeBoost);
         tvBoostLevelValue = view.findViewById(R.id.tvBoostLevelValue);
         sliderVolumeLevel = view.findViewById(R.id.sliderVolumeLevel);
-        toggleNS = view.findViewById(R.id.toggleNS);
+        rowNsOff = view.findViewById(R.id.rowNsOff);
+        rowNsRNNoise = view.findViewById(R.id.rowNsRNNoise);
+        rowNsDeepFilter = view.findViewById(R.id.rowNsDeepFilter);
+        indicatorNsOff = view.findViewById(R.id.indicatorNsOff);
+        indicatorNsRNNoise = view.findViewById(R.id.indicatorNsRNNoise);
+        indicatorNsDeepFilter = view.findViewById(R.id.indicatorNsDeepFilter);
         tvNsStrengthValue = view.findViewById(R.id.tvNsStrengthValue);
         sliderNoiseLevel = view.findViewById(R.id.sliderNoiseLevel);
         tvActiveCount = view.findViewById(R.id.tvActiveCount);
         rvClients = view.findViewById(R.id.rvClients);
-        tvNoClients = view.findViewById(R.id.tvNoClients);
+        vNoClients = view.findViewById(R.id.vNoClients);
         btnStopBroadcast = view.findViewById(R.id.btnStopBroadcast);
+        llNsStrength = view.findViewById(R.id.llNsStrength);
+        llBoostControls = view.findViewById(R.id.llBoostControls);
+        llMainContent = view.findViewById(R.id.llMainContent);
 
         // Setup
         setupHostInfo();
@@ -89,11 +104,11 @@ public class TransmittingFragment extends Fragment {
     private void setupHostInfo() {
         String ip = getLocalIpAddress();
         tvHostAddress.setText(ip);
-        tvHostPort.setText(":5003"); // Default port
+        tvHostPort.setVisibility(View.GONE);
 
         btnCopyAddress.setOnClickListener(v -> {
             ClipboardManager clipboard = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
-            ClipData clip = ClipData.newPlainText("Host IP", ip + ":5003");
+            ClipData clip = ClipData.newPlainText("Host IP", ip);
             clipboard.setPrimaryClip(clip);
             Toast.makeText(getContext(), "Address copied to clipboard", Toast.LENGTH_SHORT).show();
         });
@@ -104,7 +119,12 @@ public class TransmittingFragment extends Fragment {
 
         // Volume Boost
         swVolumeBoost.setChecked(AudioTransmitterService.appVolumeBoostEnabled);
+        llBoostControls.setVisibility(AudioTransmitterService.appVolumeBoostEnabled ? View.VISIBLE : View.GONE);
+        
         swVolumeBoost.setOnCheckedChangeListener((v, isChecked) -> {
+            TransitionManager.beginDelayedTransition(llMainContent);
+            llBoostControls.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+            
             AudioTransmitterService.appVolumeBoostEnabled = isChecked;
             float gain = isChecked ? AudioTransmitterService.appVolumeBoostLevel : 1.0f;
             AudioTransmitterService service = AudioTransmitterService.getInstance();
@@ -131,18 +151,9 @@ public class TransmittingFragment extends Fragment {
 
         // Noise Suppression
         updateNSToggleUI(AudioTransmitterService.appNsMode);
-        toggleNS.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (isChecked) {
-                int mode = 0;
-                if (checkedId == R.id.btnNsRNNoise) mode = 1;
-                else if (checkedId == R.id.btnNsDeepFilter) mode = 2;
-                
-                if (mode != AudioTransmitterService.appNsMode) {
-                    AudioTransmitterService.appNsMode = mode;
-                    repo.setTransNsMode(mode);
-                }
-            }
-        });
+        rowNsOff.setOnClickListener(v -> handleNsModeChange(0));
+        rowNsRNNoise.setOnClickListener(v -> handleNsModeChange(1));
+        rowNsDeepFilter.setOnClickListener(v -> handleNsModeChange(2));
 
         sliderNoiseLevel.setValue(AudioTransmitterService.appNoiseSuppressionLevel);
         tvNsStrengthValue.setText(String.format(Locale.getDefault(), "%.0fdB", AudioTransmitterService.appNoiseSuppressionLevel));
@@ -162,10 +173,38 @@ public class TransmittingFragment extends Fragment {
         btnStopBroadcast.setOnClickListener(v -> stopTransmitterService());
     }
 
+    private void handleNsModeChange(int mode) {
+        if (mode != AudioTransmitterService.appNsMode) {
+            SettingsRepository repo = SettingsRepository.getInstance(requireContext());
+            AudioTransmitterService.appNsMode = mode;
+            repo.setTransNsMode(mode);
+            
+            AudioTransmitterService service = AudioTransmitterService.getInstance();
+            if (service != null) {
+                service.requestAudioSourceRestart();
+            }
+            updateNSToggleUI(mode);
+        }
+    }
+
     private void updateNSToggleUI(int mode) {
-        if (mode == 0) toggleNS.check(R.id.btnNsOff);
-        else if (mode == 1) toggleNS.check(R.id.btnNsRNNoise);
-        else if (mode == 2) toggleNS.check(R.id.btnNsDeepFilter);
+        TransitionManager.beginDelayedTransition(llMainContent);
+        
+        // Update selection indicators and highlights
+        indicatorNsOff.setVisibility(mode == 0 ? View.VISIBLE : View.INVISIBLE);
+        indicatorNsRNNoise.setVisibility(mode == 1 ? View.VISIBLE : View.INVISIBLE);
+        indicatorNsDeepFilter.setVisibility(mode == 2 ? View.VISIBLE : View.INVISIBLE);
+
+        rowNsOff.setAlpha(1.0f);
+        rowNsRNNoise.setAlpha(1.0f);
+        rowNsDeepFilter.setAlpha(1.0f);
+
+        // State background highlights with dedicated drawables
+        rowNsOff.setBackgroundResource(mode == 0 ? R.drawable.bg_ns_mode_selected : R.drawable.bg_ns_mode_unselected);
+        rowNsRNNoise.setBackgroundResource(mode == 1 ? R.drawable.bg_ns_mode_selected : R.drawable.bg_ns_mode_unselected);
+        rowNsDeepFilter.setBackgroundResource(mode == 2 ? R.drawable.bg_ns_mode_selected : R.drawable.bg_ns_mode_unselected);
+
+        llNsStrength.setVisibility(mode == 2 ? View.VISIBLE : View.GONE);
     }
 
     private void setupClientList() {
@@ -183,6 +222,7 @@ public class TransmittingFragment extends Fragment {
                     clients.add(t.targetIp);
                 }
                 updateClientsUI(clients);
+                tvActiveSource.setText(t.activeSource.toUpperCase());
             } else {
                 updateClientsUI(new ArrayList<>());
             }
@@ -190,12 +230,14 @@ public class TransmittingFragment extends Fragment {
     }
 
     private void updateClientsUI(List<String> clients) {
+        TransitionManager.beginDelayedTransition(llMainContent);
+        
         if (clients.isEmpty()) {
-            tvNoClients.setVisibility(View.VISIBLE);
+            vNoClients.setVisibility(View.VISIBLE);
             rvClients.setVisibility(View.GONE);
             tvActiveCount.setText("0 ACTIVE");
         } else {
-            tvNoClients.setVisibility(View.GONE);
+            vNoClients.setVisibility(View.GONE);
             rvClients.setVisibility(View.VISIBLE);
             tvActiveCount.setText(String.format(Locale.getDefault(), "%d ACTIVE", clients.size()));
             clientAdapter.setClients(clients);

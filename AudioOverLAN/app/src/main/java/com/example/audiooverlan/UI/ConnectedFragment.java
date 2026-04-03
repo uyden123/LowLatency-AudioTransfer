@@ -106,6 +106,7 @@ public class ConnectedFragment extends Fragment {
     // Stream Configuration
     private TextView tvOpusBitrateValue;
     private Slider sliderBitrate;
+    private SwitchMaterial switchDrc;
 
     private final Runnable waveformRunnable = new Runnable() {
         @Override
@@ -164,6 +165,7 @@ public class ConnectedFragment extends Fragment {
 
         tvOpusBitrateValue = view.findViewById(R.id.tvOpusBitrateValue);
         sliderBitrate = view.findViewById(R.id.sliderBitrate);
+        switchDrc = view.findViewById(R.id.switchDrc);
     }
 
     private void setupControls() {
@@ -252,6 +254,13 @@ public class ConnectedFragment extends Fragment {
                 sendServerCommand("set_bitrate", kbps * 1000);
             }
         });
+
+        // DRC Toggle
+        switchDrc.setChecked(settings.isDrcEnabled());
+        switchDrc.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            settings.setDrcEnabled(isChecked);
+            sendServerCommand("set_drc", isChecked);
+        });
     }
 
     private void observePlayerState() {
@@ -307,6 +316,7 @@ public class ConnectedFragment extends Fragment {
         updateHandler.postDelayed(() -> {
             if (!isAdded()) return;
             sendServerCommand("set_bitrate", BITRATE_VALUES[settings.getBitrateIndex()]);
+            sendServerCommand("set_drc", settings.isDrcEnabled());
             
             updateBufferingConfig();
             AudioService.setAAudioMode(settings.isAaudioEnabled());
