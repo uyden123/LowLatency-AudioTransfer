@@ -50,7 +50,7 @@ namespace AudioTransfer.Core.Facade
         private VolumeMixerManager? _volumeMixer;
 
         public event EventHandler<string>? OnLog;
-        public event EventHandler<string>? OnClientConnected;
+        public event EventHandler<(string IpAddress, string DeviceName)>? OnClientConnected;
         public event EventHandler<string>? OnClientDisconnected;
         public event EventHandler? OnStopped;
 
@@ -108,6 +108,8 @@ namespace AudioTransfer.Core.Facade
                 (data, ep) => { try { _udpServer.Send(data, data.Length, ep); } catch { } },
                 Log
             );
+            _connectionManager.ClientConnected += (ep, name) => OnClientConnected?.Invoke(this, (ep.Address.ToString(), name));
+            _connectionManager.ClientDisconnected += (ep) => OnClientDisconnected?.Invoke(this, ep.Address.ToString());
             _connectionManager.StartMaintenance(_deviceName ?? Environment.MachineName, _cts.Token);
 
             int controlPort = listenPort + 1;

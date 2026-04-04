@@ -18,6 +18,9 @@ namespace AudioTransfer.Core.Network
         private readonly Action<string> _logger;
         private string _deviceName = Environment.MachineName;
 
+        public event Action<IPEndPoint, string>? ClientConnected;
+        public event Action<IPEndPoint>? ClientDisconnected;
+
         // Codec constants from ServerEngine
         private const byte CODEC_SYN = 0xFA;          // 250
         private const byte CODEC_SYN_ACK = 0xFB;      // 251
@@ -47,7 +50,7 @@ namespace AudioTransfer.Core.Network
                     return true;
 
                 case CODEC_ACK_HANDSHAKE:
-                    HandleAckHandshake(sender);
+                    HandleAckHandshake(sender, data, length);
                     return true;
 
                 default:
@@ -93,16 +96,23 @@ namespace AudioTransfer.Core.Network
             }
         }
 
-        private void HandleAckHandshake(IPEndPoint sender)
+        private void HandleAckHandshake(IPEndPoint sender, byte[] data, int length)
         {
             if (_clients.TryGetValue(sender, out var session))
             {
+                if (length > 3)
+                {
+                    string devName = Encoding.UTF8.GetString(data, 3, length - 3).Trim();
+                    if (!string.IsNullOrEmpty(devName)) session.DeviceName = devName;
+                }
+
                 if (session.State == HandshakeState.SynReceived)
                 {
                     session.State = HandshakeState.Authenticated;
                     session.LastSeenUtc = DateTime.UtcNow;
                     _logger($"[Manager] Handshake COMPLETE: {sender} is now AUTHENTICATED.");
                     SendDeviceName(sender);
+                    ClientConnected?.Invoke(sender, session.DeviceName ?? "Client Device");
                 }
             }
         }
@@ -117,13 +127,16 @@ namespace AudioTransfer.Core.Network
             session.LastSeenUtc = DateTime.UtcNow;
             
             // If we receive a heartbeat, it means the client thinks it's connected.
-            // If we are still in SynReceived, it means our SYN_ACK likely reached the client 
-            // but their final ACK was lost. We can safely promote to Authenticated now.
             if (session.State == HandshakeState.SynReceived || forceAuthenticated)
             {
+                bool newlyAuthenticated = session.State != HandshakeState.Authenticated;
                 session.State = HandshakeState.Authenticated;
-                _logger($"[Manager] {sender} promoted to AUTHENTICATED via activity/heartbeat.");
-                SendDeviceName(sender);
+                if (newlyAuthenticated)
+                {
+                    _logger($"[Manager] {sender} promoted to AUTHENTICATED via activity/heartbeat.");
+                    SendDeviceName(sender);
+                    ClientConnected?.Invoke(sender, session.DeviceName ?? "Client Device");
+                }
             }
         }
 
@@ -180,16 +193,22 @@ namespace AudioTransfer.Core.Network
             var timedOut = _clients.Where(kvp => !kvp.Value.IsActive()).ToList();
             foreach (var kvp in timedOut)
             {
-                _clients.TryRemove(kvp.Key, out _);
-                _logger($"[Manager] Client {kvp.Key} removed due to timeout.");
+                if (_clients.TryRemove(kvp.Key, out var session))
+                {
+                    _logger($"[Manager] Client {kvp.Key} removed due to timeout.");
+                    if (session.State == HandshakeState.Authenticated)
+                        ClientDisconnected?.Invoke(kvp.Key);
+                }
             }
         }
 
         public void RemoveClient(IPEndPoint ep)
         {
-            if (_clients.TryRemove(ep, out _))
+            if (_clients.TryRemove(ep, out var session))
             {
                 _logger($"[Manager] Client {ep} removed manually.");
+                if (session.State == HandshakeState.Authenticated)
+                    ClientDisconnected?.Invoke(ep);
             }
         }
     }

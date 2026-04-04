@@ -11,6 +11,8 @@ using System.Text.RegularExpressions;
 using System.Linq;
 using AudioTransfer.Core.Models;
 using AudioTransfer.GUI.ViewModels.States;
+using System.Diagnostics;
+using System.Net;
 
 namespace AudioTransfer.GUI.ViewModels
 {
@@ -93,6 +95,7 @@ namespace AudioTransfer.GUI.ViewModels
         private DeviceItem? _selectedOutputDevice;
 
         public ObservableCollection<DiscoveredServiceItem> DiscoveredServers { get; } = new ObservableCollection<DiscoveredServiceItem>();
+        public ObservableCollection<ConnectedClientItem> ConnectedClients { get; } = new ObservableCollection<ConnectedClientItem>();
 
         [ObservableProperty]
         private string _playerStatusText = "CONNECT";
@@ -137,9 +140,42 @@ namespace AudioTransfer.GUI.ViewModels
         private bool _isAutoConnecting = false;
         private bool _isInitializing = false;
 
+        [ObservableProperty]
+        private bool _isServerRunning = false;
+
+        [ObservableProperty]
+        private double _serverCpuLoad = 0;
+
+        [ObservableProperty]
+        private string _serverBandwidth = "0 Kbps";
+
+        [ObservableProperty]
+        private string _serverTotalData = "0 MB";
+
+        [ObservableProperty]
+        private string _serverProcessingHealth = "Stable";
+
+        [ObservableProperty]
+        private string _serverCpuLoadText = "0%";
+
+        [ObservableProperty]
+        private string _serverButtonText = "START SERVER";
+
+        [ObservableProperty]
+        private string _clientListPlaceholder = "SERVER OFFLINE";
+
+        [ObservableProperty]
+        private bool _isSearchingServers;
+
+        public ObservableCollection<LogMessageViewModel> SystemLogs { get; } = new();
+
+        [ObservableProperty]
+        private bool _isLogsPaused;
+
         public event EventHandler<(string Message, string Title)>? RequestShowNotification;
         public event EventHandler? RequestTransitionToStats;
         public event EventHandler? RequestTransitionToConnect;
+        public event EventHandler? RequestRefreshDiscovery;
         
         private readonly IConfigRepository<PlayerConfig> _configRepository;
 
@@ -155,19 +191,28 @@ namespace AudioTransfer.GUI.ViewModels
             _ = StartStatsTimer();
 
             // Connect to core events to update properties
-            _serverEngine.OnClientConnected += (s, ip) => 
+            _serverEngine.OnClientConnected += (s, data) => 
             {
                 System.Windows.Application.Current.Dispatcher.Invoke(() => {
-                    IsClientConnected = true;
-                    UpdateAppStatusText(ip);
+                    if (data.IpAddress != null && !ConnectedClients.Any(x => x.IpAddress == data.IpAddress))
+                    {
+                        ConnectedClients.Add(new ConnectedClientItem { IpAddress = data.IpAddress, DeviceType = data.DeviceName });
+                    }
+                    IsClientConnected = ConnectedClients.Count > 0;
+                    UpdateAppStatusText(data.IpAddress);
                 });
             };
             
             _serverEngine.OnClientDisconnected += (s, ip) => 
             {
                 System.Windows.Application.Current.Dispatcher.Invoke(() => {
-                    IsClientConnected = false;
-                    UpdateAppStatusText(null);
+                    if (ip != null)
+                    {
+                        var item = ConnectedClients.FirstOrDefault(x => x.IpAddress == ip);
+                        if (item != null) ConnectedClients.Remove(item);
+                    }
+                    IsClientConnected = ConnectedClients.Count > 0;
+                    UpdateAppStatusText(ConnectedClients.Count > 0 ? ConnectedClients.Last().IpAddress : null);
                 });
             };
 
@@ -207,6 +252,44 @@ namespace AudioTransfer.GUI.ViewModels
                     }
                 });
             };
+            CoreLogger.Instance.LogEvent += (s, e) => 
+            {
+                if (IsLogsPaused) return;
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(() => {
+                    AddFormattedLog(e.LogMessage);
+                });
+            };
+
+            // Pre-load recent logs
+            var recent = CoreLogger.Instance.GetRecentLogs(100);
+            foreach (var log in recent)
+            {
+                AddFormattedLog(log);
+            }
+        }
+
+        private void AddFormattedLog(LogMessage log)
+        {
+            var vm = new LogMessageViewModel 
+            { 
+                Time = $"[{log.Timestamp:HH:mm:ss}] ",
+                Level = $"[{log.Level.ToString().ToUpper()}] ",
+                Message = log.Message,
+                Color = GetLogBrush(log.Level)
+            };
+            SystemLogs.Add(vm);
+            if (SystemLogs.Count > 500) SystemLogs.RemoveAt(0);
+        }
+
+        private string GetLogBrush(LogLevel level)
+        {
+            return level switch
+            {
+                LogLevel.Error => "#FF5252", // Red
+                LogLevel.Warning => "#FFB74D", // Warn orange
+                LogLevel.Debug => "#A3C9FF", // Accent blue highlight
+                _ => "#C0C7D4" // TextSecBrush hex
+            };
         }
 
         private async Task StartStatsTimer()
@@ -224,6 +307,7 @@ namespace AudioTransfer.GUI.ViewModels
 
         private void UpdateStats()
         {
+            // 1. Update Player Stats (Client Side)
             if (_playerEngine.IsRunning)
             {
                 var elapsed = DateTime.UtcNow - _playerEngine.StartTime;
@@ -250,6 +334,67 @@ namespace AudioTransfer.GUI.ViewModels
                 AverageLatency = "—";
                 MaxLatency = "—";
             }
+
+            // 2. Update Server Stats (Host Side)
+            if (_serverEngine.IsRunning && _serverEngine is ServerEngine engine)
+            {
+                var stats = engine.Stats;
+                var snapshot = stats.TakeRateSnapshot();
+                
+                // Bandwidth
+                if (snapshot.KbitsPerSec > 1000)
+                    ServerBandwidth = $"{(snapshot.KbitsPerSec / 1000.0):F2} Mbps";
+                else
+                    ServerBandwidth = $"{snapshot.KbitsPerSec:F0} Kbps";
+
+                // Total Data
+                double totalMb = stats.BytesSent / (1024.0 * 1024.0);
+                if (totalMb > 1024)
+                    ServerTotalData = $"{(totalMb / 1024.0):F2} GB";
+                else
+                    ServerTotalData = $"{totalMb:F1} MB";
+
+                // CPU Load (Simulated/Simplified for the process)
+                UpdateServerCpuUsage();
+
+                // Logic for health text
+                ServerProcessingHealth = stats.ProcessingErrors > 0 ? "Errors Detected" : "Optimized";
+            }
+            else
+            {
+                ServerBandwidth = "0 Kbps";
+                ServerCpuLoad = 0;
+                ServerCpuLoadText = "0%";
+            }
+            UpdateClientListPlaceholder();
+        }
+
+        private DateTime _lastCpuTime = DateTime.MinValue;
+        private TimeSpan _lastProcessorTime;
+        private void UpdateServerCpuUsage()
+        {
+            try
+            {
+                var currentProcess = Process.GetCurrentProcess();
+                var now = DateTime.UtcNow;
+
+                if (_lastCpuTime != DateTime.MinValue)
+                {
+                    var elapsedBase = (now - _lastCpuTime).TotalMilliseconds * Environment.ProcessorCount;
+                    var elapsedProcessor = (currentProcess.TotalProcessorTime - _lastProcessorTime).TotalMilliseconds;
+                    
+                    if (elapsedBase > 0)
+                    {
+                        double usage = (elapsedProcessor / elapsedBase) * 100.0;
+                        ServerCpuLoad = Math.Min(100, Math.Max(0, usage));
+                        ServerCpuLoadText = $"{ServerCpuLoad:F0}%";
+                    }
+                }
+
+                _lastCpuTime = now;
+                _lastProcessorTime = currentProcess.TotalProcessorTime;
+            }
+            catch { /* Ignore process access errors */ }
         }
 
         private bool _disposed;
@@ -280,11 +425,16 @@ namespace AudioTransfer.GUI.ViewModels
                 // Init IPs (Host/Target are handled by OnConfigChanged)
                 LocalIps = string.Join("  •  ", ServerEngine.GetLocalIPAddresses());
 
-            // Load Capture Devices
+            // Put a placeholder FIRST so the ComboBox is never completely empty
+            // (An empty ComboBox causes a 0-height invisible popup that locks UI focus)
+            CaptureDevices.Clear();
+            CaptureDevices.Add(new DeviceItem { Id = string.Empty, Name = "Gathering Devices..." });
+            SelectedCaptureDevice = CaptureDevices[0];
+
+            var captures = App.CaptureDevicesTask != null ? await App.CaptureDevicesTask : await Task.Run(() => WasapiTimedCapture.GetRenderDevices());
+
             CaptureDevices.Clear();
             CaptureDevices.Add(new DeviceItem { Id = string.Empty, Name = "System Default Device" });
-            
-            var captures = WasapiTimedCapture.GetRenderDevices();
             foreach (var dev in captures)
             {
                 CaptureDevices.Add(new DeviceItem { Id = dev.Id, Name = dev.Name });
@@ -299,11 +449,14 @@ namespace AudioTransfer.GUI.ViewModels
                 SelectedCaptureDevice = CaptureDevices[0];
             }
 
-            // Load Output/Render Devices
+            OutputDevices.Clear();
+            OutputDevices.Add(new DeviceItem { Id = string.Empty, Name = "Gathering Devices..." });
+            SelectedOutputDevice = OutputDevices[0];
+
+            var renders = App.RenderDevicesTask != null ? await App.RenderDevicesTask : await Task.Run(() => WasapiPlayer.GetRenderDeviceList());
+
             OutputDevices.Clear();
             OutputDevices.Add(new DeviceItem { Id = string.Empty, Name = "System Default Device" });
-
-            var renders = WasapiPlayer.GetRenderDeviceList();
             foreach(var dev in renders)
             {
                 OutputDevices.Add(new DeviceItem { Id = dev.Id, Name = dev.Name });
@@ -321,6 +474,9 @@ namespace AudioTransfer.GUI.ViewModels
             }
                 // Final sync for app status
                 UpdateAppStatusText(null);
+                bool isVi = Language == "Vietnamese";
+                ServerButtonText = isVi ? "BẮT ĐẦU SERVER" : "START SERVER";
+                UpdateClientListPlaceholder();
             }
             finally
             {
@@ -511,6 +667,24 @@ namespace AudioTransfer.GUI.ViewModels
                 ActiveDeviceIp = connectedIp;
                 AppStatusText = isVi ? $"Đã kết nối qua mạng: {connectedIp}" : $"Connected over Network: {connectedIp}";
             }
+            UpdateClientListPlaceholder();
+        }
+
+        private void UpdateClientListPlaceholder()
+        {
+            bool isVi = Language == "Vietnamese";
+            if (!IsServerRunning)
+            {
+                ClientListPlaceholder = isVi ? "SERVER ĐANG TẮT" : "SERVER OFFLINE";
+            }
+            else if (ConnectedClients.Count == 0)
+            {
+                ClientListPlaceholder = isVi ? "ĐANG CHỜ KẾT NỐI..." : "WAITING FOR CONNECTIONS...";
+            }
+            else
+            {
+                ClientListPlaceholder = "";
+            }
         }
 
         public bool LaunchOnStartup
@@ -579,14 +753,20 @@ namespace AudioTransfer.GUI.ViewModels
 
         public void AddDiscoveredServer(string name, string ip, int port)
         {
-            CoreLogger.Instance.Log($"[MainViewModel] AddDiscoveredServer: {name}, {ip}, {port}");  
-            if (DiscoveredServers.Any(x => x.IpAddress == ip)) return;
+            if (DiscoveredServers.Any(s => s.IpAddress == ip)) return;
+            System.Windows.Application.Current.Dispatcher.Invoke(() => {
+                DiscoveredServers.Add(new DiscoveredServiceItem { Name = name, IpAddress = ip, Port = port });
+            });
             
-            var item = new DiscoveredServiceItem { Name = name, IpAddress = ip, Port = port };
-            DiscoveredServers.Add(item);
-
             // Auto Connect Logic
             CheckAutoConnect();
+        }
+
+        public void ClearDiscoveredServers()
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke(() => {
+                DiscoveredServers.Clear();
+            });
         }
 
         public void RemoveDiscoveredServer(string ip)
@@ -604,6 +784,98 @@ namespace AudioTransfer.GUI.ViewModels
             await _currentState.HandleConnectToggleAsync(this);
         }
 
+
+        [RelayCommand]
+        private void ToggleServer()
+        {
+            bool isVi = Language == "Vietnamese";
+            if (_serverEngine.IsRunning)
+            {
+                _serverEngine.Stop();
+                IsServerRunning = false;
+                AppStatusText = isVi ? "Server đã dừng." : "Server Stopped.";
+                ServerButtonText = isVi ? "BẮT ĐẦU SERVER" : "START SERVER";
+            }
+            else
+            {
+                try
+                {
+                    _serverEngine.StartWasapiToAndroid(5000, SelectedCaptureDevice?.Id, DeviceName);
+                    IsServerRunning = true;
+                    AppStatusText = isVi ? "Server đã bật (Port 5000)." : "Server Started on port 5000.";
+                    ServerButtonText = isVi ? "DỪNG SERVER" : "STOP SERVER";
+                }
+                catch (Exception ex)
+                {
+                    NotifyUser(isVi ? $"Không thể bật server: {ex.Message}" : $"Failed to start server: {ex.Message}", isVi ? "Lỗi Server" : "Server Error");
+                }
+            }
+            UpdateClientListPlaceholder();
+        }
+
+        [RelayCommand]
+        private async Task RefreshServers()
+        {
+            if (IsSearchingServers) return;
+            IsSearchingServers = true;
+            
+            // Clear current list to see fresh results
+            ClearDiscoveredServers();
+            
+            RequestRefreshDiscovery?.Invoke(this, EventArgs.Empty);
+            
+            // Allow 5 seconds of "Searching" status
+            await Task.Delay(5000);
+            IsSearchingServers = false;
+        }
+
+        [RelayCommand]
+        private void ClearLogs()
+        {
+            SystemLogs.Clear();
+            CoreLogger.Instance.Clear();
+        }
+
+        [RelayCommand]
+        private void RefreshLogs()
+        {
+            SystemLogs.Clear();
+            var recent = CoreLogger.Instance.GetRecentLogs(200);
+            foreach (var log in recent)
+            {
+                AddFormattedLog(log);
+            }
+        }
+
+        [RelayCommand]
+        private void ExportLogs()
+        {
+            try
+            {
+                var sfd = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "Text Files (*.txt)|*.txt",
+                    FileName = $"AudioTransfer_Logs_{DateTime.Now:yyyyMMdd_HHmm}.txt"
+                };
+
+                if (sfd.ShowDialog() == true)
+                {
+                    var content = string.Join("\n", SystemLogs.Select(l => $"{l.Time}{l.Level}{l.Message}"));
+                    System.IO.File.WriteAllText(sfd.FileName, content);
+                    RequestShowNotification?.Invoke(this, ("Logs exported successfully.", "Export"));
+                }
+            }
+            catch (Exception ex)
+            {
+                RequestShowNotification?.Invoke(this, ($"Export failed: {ex.Message}", "Error"));
+            }
+        }
+
+        [RelayCommand]
+        private void TogglePauseLogs()
+        {
+            IsLogsPaused = !IsLogsPaused;
+        }
 
         [RelayCommand]
         private void ConnectToService(DiscoveredServiceItem service)
@@ -630,6 +902,20 @@ namespace AudioTransfer.GUI.ViewModels
         public string Name { get; set; } = string.Empty;
         public string IpAddress { get; set; } = string.Empty;
         public int Port { get; set; } = 5003;
+    }
+
+    public class ConnectedClientItem
+    {
+        public string IpAddress { get; set; } = string.Empty;
+        public string DeviceType { get; set; } = "Device";
+    }
+
+    public class LogMessageViewModel
+    {
+        public string Time { get; set; } = string.Empty;
+        public string Level { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public string Color { get; set; } = "TextSecBrush";
     }
 }
 

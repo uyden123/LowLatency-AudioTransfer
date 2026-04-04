@@ -58,6 +58,18 @@ namespace AudioTransfer.GUI
                 var sb = PlayerTabRoot.Resources["TransitionToConnect"] as System.Windows.Media.Animation.Storyboard;
                 sb?.Begin();
             });
+            ViewModel.RequestRefreshDiscovery += (s, e) => {
+                // Clear the mDNS client's internal cache so it re-triggers events for current servers
+                _guiDiscoveryClient?.ClearCache();
+                
+                // Send a burst of queries for better reliability on refresh
+                Task.Run(async () => {
+                    for (int i = 0; i < 3; i++) {
+                        _guiDiscoveryClient?.SendQuery();
+                        await Task.Delay(500);
+                    }
+                });
+            };
             
             _guiDiscoveryClient = new MdnsDiscoveryClient("_audiooverlan-mic._udp");
             _guiDiscoveryClient.OnServiceDiscovered += (s, service) =>
@@ -92,10 +104,35 @@ namespace AudioTransfer.GUI
             MainTabs.SelectedIndex = 0;
             NavServer.IsChecked = true;
 
-            // 7. Auto-start server
-            StartServer();
+            // 7. Auto-start server (on background thread to avoid blocking UI)
+            await Task.Run(() => StartServer());
 
             CoreLogger.Instance.Log("AudioTransfer UI Modernized.");
+        }
+
+        // Custom ComboBox click handler (replaces ToggleButton to avoid click routing conflicts)
+        private void ComboBox_PreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (sender is System.Windows.Controls.ComboBox cb)
+            {
+                if (cb.IsDropDownOpen)
+                {
+                    // If the dropdown is open, only toggle it closed if clicking on the main header area.
+                    // This allows clicks on items in the dropdown to pass through and be selected.
+                    var pos = e.GetPosition(cb);
+                    if (pos.X >= 0 && pos.X <= cb.ActualWidth && pos.Y >= 0 && pos.Y <= cb.ActualHeight)
+                    {
+                        cb.IsDropDownOpen = false;
+                        e.Handled = true;
+                    }
+                }
+                else
+                {
+                    // If closed, click to open.
+                    cb.IsDropDownOpen = true;
+                    e.Handled = true;
+                }
+            }
         }
 
         private System.Windows.Forms.NotifyIcon? _notifyIcon;
@@ -149,48 +186,15 @@ namespace AudioTransfer.GUI
             base.OnStateChanged(e);
         }
 
-        private LogWindow? _logWindow;
-        private void ShowLogWindow()
-        {
-            if (_logWindow == null || !IsWindowOpen(_logWindow))
-            {
-                _logWindow = new LogWindow();
-            }
-
-            _logWindow.Show();
-            _logWindow.Activate();
-            if (_logWindow.WindowState == WindowState.Minimized)
-                _logWindow.WindowState = WindowState.Normal;
-        }
-
-        private bool IsWindowOpen(Window window)
-        {
-            return System.Windows.Application.Current.Windows.Cast<Window>().Any(x => x == window);
-        }
-
-        private void BtnShowLogs_Click(object sender, RoutedEventArgs e)
-        {
-            ShowLogWindow();
-        }
-
         private void StartServer()
         {
-            try
+            Dispatcher.Invoke(() =>
             {
-                // We no longer instantiate new ServerEngine, we use the injected instance from DI
-                if (_serverEngine.IsRunning) 
-                    _serverEngine.Stop();
-                
-                // AutoMute handling is already in VM or can be simplified here
-                // Note: We should only subscribe once. Since it's a singleton, let's move this to constructor or handle it better.
-
-                _serverEngine.StartWasapiToAndroid(5000, ViewModel.SelectedCaptureDevice?.Id, ViewModel.DeviceName);
-                UpdateServerUI(true);
-            }
-            catch (Exception ex)
-            {
-                CoreLogger.Instance.Log($"Failed to auto-start server: {ex.Message}");
-            }
+                if (!ViewModel.IsServerRunning)
+                {
+                    ViewModel.ToggleServerCommand.Execute(null);
+                }
+            });
         }
 
 
@@ -267,52 +271,32 @@ namespace AudioTransfer.GUI
         }
 
  
-        private void BtnSelectDevice_Click(object sender, RoutedEventArgs e)
-        {
-            DevicePickerView.Visibility = Visibility.Visible;
-            (Resources["ShowDevicePicker"] as System.Windows.Media.Animation.Storyboard)?.Begin();
-        }
- 
-        private void BtnBackFromDevices_Click(object sender, RoutedEventArgs e)
-        {
-            var sb = Resources["HideDevicePicker"] as System.Windows.Media.Animation.Storyboard;
-            if (sb != null)
-            {
-                sb.Completed += (s, ev) => DevicePickerView.Visibility = Visibility.Collapsed;
-                sb.Begin();
-            }
-            else DevicePickerView.Visibility = Visibility.Collapsed;
-        }
- 
-        private void BtnSelectOutputDevice_Click(object sender, RoutedEventArgs e)
-        {
-            OutputDevicePickerView.Visibility = Visibility.Visible;
-            (Resources["ShowOutputDevicePicker"] as System.Windows.Media.Animation.Storyboard)?.Begin();
-        }
- 
-        private void BtnBackFromOutputDevices_Click(object sender, RoutedEventArgs e)
-        {
-            var sb = Resources["HideOutputDevicePicker"] as System.Windows.Media.Animation.Storyboard;
-            if (sb != null)
-            {
-                sb.Completed += (s, ev) => OutputDevicePickerView.Visibility = Visibility.Collapsed;
-                sb.Begin();
-            }
-            else OutputDevicePickerView.Visibility = Visibility.Collapsed;
-        }
+  
 
         private void Nav_Click(object sender, RoutedEventArgs e)
         {
-            if (MainTabs == null) return;
+            if (MainTabs == null || TxtActivePage == null) return;
 
             int oldIndex = MainTabs.SelectedIndex;
             int newIndex = oldIndex;
 
             if (sender is System.Windows.Controls.RadioButton rb)
             {
-                if (rb == NavServer) newIndex = 0;
-                else if (rb == NavPlayer) newIndex = 1;
-                else if (rb == NavSettings) newIndex = 2;
+                if (rb == NavServer)
+                {
+                    newIndex = 0;
+                    TxtActivePage.Text = "SERVER CONSOLE";
+                }
+                else if (rb == NavPlayer)
+                {
+                    newIndex = 1;
+                    TxtActivePage.Text = "PLAYER HUB";
+                }
+                else if (rb == NavSettings)
+                {
+                    newIndex = 2;
+                    TxtActivePage.Text = "GENERAL SETTINGS";
+                }
 
                 if (newIndex != oldIndex)
                 {

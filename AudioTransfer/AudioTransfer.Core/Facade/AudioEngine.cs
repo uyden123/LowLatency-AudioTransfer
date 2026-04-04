@@ -48,7 +48,7 @@ namespace AudioTransfer.Core.Facade
         {
             CurrentMode = StreamingMode.WasapiToAndroid;
             _server = new ServerEngine();
-            _server.OnClientConnected += (s, e) => OnClientConnected?.Invoke(this, e);
+            _server.OnClientConnected += (s, e) => OnClientConnected?.Invoke(this, e.IpAddress);
             _server.OnClientDisconnected += (s, e) => OnClientDisconnected?.Invoke(this, e);
             _server.OnStopped += (s, e) => OnStopped?.Invoke(this, EventArgs.Empty);
             _server.StartWasapiToAndroid(port, deviceId, instanceName);

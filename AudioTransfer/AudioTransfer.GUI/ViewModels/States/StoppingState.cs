@@ -11,6 +11,7 @@ public class StoppingState : IPlayerState
         CoreLogger.Instance.Log("[StoppingState] HandleConnectToggleAsync called");
         
         // Trigger UI animation back to connection view immediately
+        context.IsStatsVisible = false;
         context.TransitionToConnectView();
 
         if (context.AutoConnect)

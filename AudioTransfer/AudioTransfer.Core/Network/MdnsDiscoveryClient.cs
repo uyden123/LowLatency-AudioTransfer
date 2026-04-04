@@ -108,15 +108,20 @@ namespace AudioTransfer.Core.Network
             _udpClient?.Dispose();
             _udpClient = null;
 
-            lock (_lock) _services.Clear();
+            ClearCache();
 
             CoreLogger.Instance.Log("[mDNS-Discovery] Stopped.");
+        }
+
+        public void ClearCache()
+        {
+            lock (_lock) _services.Clear();
         }
 
         /// <summary>
         /// Send an mDNS PTR query for our service type.
         /// </summary>
-        private void SendQuery()
+        public void SendQuery()
         {
             try
             {

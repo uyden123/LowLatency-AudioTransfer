@@ -40,8 +40,15 @@ namespace AudioTransfer.GUI
                 .Build();
         }
 
+        public static Task<System.Collections.Generic.List<(string Id, string Name)>>? CaptureDevicesTask { get; private set; }
+        public static Task<System.Collections.Generic.List<(string Id, string Name)>>? RenderDevicesTask { get; private set; }
+
         protected override async void OnStartup(StartupEventArgs e)
         {
+            // Fire-and-forget: Immediately start interrogating Windows Audio APIs concurrently with rendering
+            CaptureDevicesTask = Task.Run(() => AudioTransfer.Core.Audio.WasapiTimedCapture.GetRenderDevices());
+            RenderDevicesTask = Task.Run(() => AudioTransfer.Core.Audio.WasapiPlayer.GetRenderDeviceList());
+
             await AppHost!.StartAsync();
 
             base.OnStartup(e);

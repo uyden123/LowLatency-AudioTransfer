@@ -8,7 +8,7 @@ public interface IServerEngine : IDisposable
     bool IsRunning { get; }
 
     event EventHandler<string>? OnLog;
-    event EventHandler<string>? OnClientConnected;
+    event EventHandler<(string IpAddress, string DeviceName)>? OnClientConnected;
     event EventHandler<string>? OnClientDisconnected;
     event EventHandler? OnStopped;
 

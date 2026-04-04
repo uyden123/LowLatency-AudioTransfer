@@ -1,44 +1,109 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Dark Theme Colors -->
-    <Color x:Key="BgColor">#1E1E1E</Color>
-    <Color x:Key="SurfaceColor">#2D2D2D</Color>
-    <Color x:Key="BottomBarColor">#252525</Color>
-    <Color x:Key="CardColor">#2D2D2D</Color>
-    <Color x:Key="AccentColor">#4CAF50</Color>
-    <Color x:Key="AccentHoverColor">#43A047</Color>
-    <Color x:Key="AccentPressColor">#388E3C</Color>
-    <Color x:Key="AccentDimColor">#1A4CAF50</Color>
-    <Color x:Key="AccentPressBgColor">#334CAF50</Color>
-    <Color x:Key="TextPrimaryColor">#FFFFFF</Color>
-    <Color x:Key="TextSecondaryColor">#9E9E9E</Color>
-    <Color x:Key="DividerColor">#383838</Color>
-    <Color x:Key="HoverColor">#333333</Color>
-    <Color x:Key="InputBgColor">#353535</Color>
-    <Color x:Key="InputBorderColor">#444444</Color>
-    <Color x:Key="WarningBgColor">#2A2520</Color>
-    <Color x:Key="WarningColor">#FFB74D</Color>
-    <Color x:Key="ToggleOffTrackColor">#555555</Color>
-    <Color x:Key="ErrorColor">#FF5252</Color>
-    <Color x:Key="ErrorDimColor">#2A2020</Color>
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- THE ETHEREAL COMMAND – Dark Theme (Kinetic Monolith) -->
+    <!-- ═══════════════════════════════════════════════════ -->
 
-    <!-- Brushes -->
+    <!-- Tonal Surface Hierarchy -->
+    <Color x:Key="BgColor">#0F1012</Color>                        <!-- surface: "the desk" -->
+    <Color x:Key="SurfaceContainerLowestColor">#0A0A0A</Color>    <!-- sunken data wells, sidebar -->
+    <Color x:Key="SurfaceContainerLowColor">#161719</Color>       <!-- secondary workspace -->
+    <Color x:Key="SurfaceContainerColor">#1C1D21</Color>          <!-- mid-layer -->
+    <Color x:Key="SurfaceColor">#161719</Color>                   <!-- surface-container-low alias -->
+    <Color x:Key="SurfaceContainerHighColor">#22242A</Color>      <!-- contextual sidebars -->
+    <Color x:Key="SurfaceContainerHighestColor">#1B1B1B</Color>    <!-- active modules/cards -->
+    <Color x:Key="SurfaceBrightColor">#2A2C32</Color>             <!-- elevated interactive -->
+    <Color x:Key="BottomBarColor">#0E0E0E</Color>                 <!-- sidebar/status bar -->
+    <Color x:Key="CardColor">#1B1B1B</Color>                      <!-- card backgrounds -->
+
+    <!-- Accent Colors: Primary (Blue) -->
+    <Color x:Key="AccentColor">#A3C9FF</Color>                    <!-- primary -->
+    <Color x:Key="AccentHoverColor">#8AB8FF</Color>               <!-- primary hover -->
+    <Color x:Key="AccentPressColor">#6DA5F0</Color>               <!-- primary pressed -->
+    <Color x:Key="AccentDimColor">#1AA3C9FF</Color>               <!-- primary at 10% -->
+    <Color x:Key="AccentPressBgColor">#33A3C9FF</Color>           <!-- primary at 20% -->
+    <Color x:Key="PrimaryContainerColor">#33A3C9FF</Color>        <!-- pulse animation (20%) -->
+
+    <!-- Accent Colors: Secondary (Purple) -->
+    <Color x:Key="SecondaryColorRaw">#CFBDFF</Color>                 <!-- secondary accent -->
+    <SolidColorBrush x:Key="SecondaryColor" Color="{StaticResource SecondaryColorRaw}"/>
+    <Color x:Key="SecondaryContainerColor">#33CFBDFF</Color>      <!-- secondary container -->
+
+    <!-- Text -->
+    <Color x:Key="TextPrimaryColor">#FFFFFF</Color>               <!-- on_surface (high emphasis) -->
+    <Color x:Key="TextSecondaryColor">#C0C7D4</Color>             <!-- on_surface_variant -->
+
+    <!-- Borders & Dividers -->
+    <Color x:Key="DividerColorRaw">#26404752</Color>                 <!-- ghost border (outline_variant @ 15%) -->
+    <SolidColorBrush x:Key="DividerColor" Color="{StaticResource DividerColorRaw}"/>
+    <Color x:Key="OutlineVariantColorRaw">#282828</Color>            <!-- outline_variant full -->
+    <SolidColorBrush x:Key="OutlineVariantColor" Color="{StaticResource OutlineVariantColorRaw}"/>
+
+    <Color x:Key="HoverColorRaw">#353535</Color>                     <!-- hover surface -->
+    <SolidColorBrush x:Key="HoverColor" Color="{StaticResource HoverColorRaw}"/>
+
+    <!-- Inputs -->
+    <Color x:Key="InputBgColor">#0E0E0E</Color>                  <!-- sunken input -->
+    <Color x:Key="InputBorderColor">#26404752</Color>             <!-- ghost border -->
+
+    <!-- Semantic -->
+    <Color x:Key="WarningBgColorRaw">#2A2520</Color>
+    <SolidColorBrush x:Key="WarningBgColor" Color="{StaticResource WarningBgColorRaw}"/>
+    <Color x:Key="WarningColorRaw">#FFB74D</Color>
+    <SolidColorBrush x:Key="WarningColor" Color="{StaticResource WarningColorRaw}"/>
+    <Color x:Key="ToggleOffTrackColorRaw">#404752</Color>
+    <SolidColorBrush x:Key="ToggleOffTrackColor" Color="{StaticResource ToggleOffTrackColorRaw}"/>
+    <Color x:Key="ErrorColorRaw">#FF5252</Color>
+    <SolidColorBrush x:Key="ErrorColor" Color="{StaticResource ErrorColorRaw}"/>
+    <Color x:Key="ErrorDimColorRaw">#2A2020</Color>
+    <SolidColorBrush x:Key="ErrorDimColor" Color="{StaticResource ErrorDimColorRaw}"/>
+    <Color x:Key="SuccessColorRaw">#CFBDFF</Color>                   <!-- secondary for active/success -->
+    <SolidColorBrush x:Key="SuccessColor" Color="{StaticResource SuccessColorRaw}"/>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- BRUSHES                                             -->
+    <!-- ═══════════════════════════════════════════════════ -->
+
+    <!-- Surface Brushes -->
     <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}"/>
     <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
+    <SolidColorBrush x:Key="SurfaceContainerLowBrush" Color="{StaticResource SurfaceContainerLowColor}"/>
+    <SolidColorBrush x:Key="SurfaceContainerLowestBrush" Color="{StaticResource SurfaceContainerLowestColor}"/>
+    <SolidColorBrush x:Key="SurfaceContainerBrush" Color="{StaticResource SurfaceContainerColor}"/>
+    <SolidColorBrush x:Key="SurfaceContainerHighBrush" Color="{StaticResource SurfaceContainerHighColor}"/>
+    <SolidColorBrush x:Key="SurfaceContainerHighestBrush" Color="{StaticResource SurfaceContainerHighestColor}"/>
+    <SolidColorBrush x:Key="SurfaceBrightBrush" Color="{StaticResource SurfaceBrightColor}"/>
     <SolidColorBrush x:Key="BottomBarBrush" Color="{StaticResource BottomBarColor}"/>
     <SolidColorBrush x:Key="CardBrush" Color="{StaticResource CardColor}"/>
+
+    <!-- Accent Brushes -->
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHoverColor}"/>
+    <SolidColorBrush x:Key="SecondaryBrush" Color="{StaticResource SecondaryColor}"/>
+
+    <!-- Text Brushes -->
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}"/>
     <SolidColorBrush x:Key="TextSecBrush" Color="{StaticResource TextSecondaryColor}"/>
-    <SolidColorBrush x:Key="DividerBrush" Color="{StaticResource DividerColor}"/>
+
+    <!-- Border & Input Brushes -->
+    <SolidColorBrush x:Key="DividerBrush" Color="{StaticResource DividerColorRaw}"/>
     <SolidColorBrush x:Key="InputBgBrush" Color="{StaticResource InputBgColor}"/>
     <SolidColorBrush x:Key="InputBorderBrush" Color="{StaticResource InputBorderColor}"/>
-    <SolidColorBrush x:Key="ControlBgBrush" Color="{StaticResource SurfaceColor}"/>
+    <SolidColorBrush x:Key="ControlBgBrush" Color="{StaticResource SurfaceContainerHighestColor}"/>
+
+    <!-- Signature CTA Gradient (135° primary → secondary) -->
+    <LinearGradientBrush x:Key="GradientCTABrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#A3C9FF" Offset="0"/>
+        <GradientStop Color="#CFBDFF" Offset="1"/>
+    </LinearGradientBrush>
+
+    <!-- Ambient Glow Shadow Color -->
+    <SolidColorBrush x:Key="AmbientGlowBrush" Color="#14A3C9FF"/>
 
     <!-- Other UI Elements -->
-    <SolidColorBrush x:Key="ScrollbarThumbBrush" Color="#44FFFFFF"/>
-    <SolidColorBrush x:Key="NavForegroundBrush" Color="#9E9E9E"/>
-    <SolidColorBrush x:Key="NavHoverBrush" Color="#CCCCCC"/>
+    <SolidColorBrush x:Key="ScrollbarThumbBrush" Color="#33FFFFFF"/>
+    <SolidColorBrush x:Key="NavForegroundBrush" Color="#8090A0"/>
+    <SolidColorBrush x:Key="NavHoverBrush" Color="#C0C7D4"/>
 
 </ResourceDictionary>
