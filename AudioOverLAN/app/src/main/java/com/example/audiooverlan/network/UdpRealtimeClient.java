@@ -3,6 +3,7 @@ package com.example.audiooverlan.network;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.os.Build;
 
 import com.example.audiooverlan.audio.JitterBuffer;
 
@@ -234,9 +235,11 @@ public class UdpRealtimeClient {
                         if (codec == (CODEC_SYN_ACK & 0xFF)) {
                             Log.i(TAG, "Handshake Step 2 RECEIVED: SYN_ACK. Sending ACK x3 + Immediate Heartbeat.");
                             
-                            byte[] ackHandshake = new byte[3];
+                            byte[] nameBytes = Build.MODEL.getBytes(StandardCharsets.UTF_8);
+                            byte[] ackHandshake = new byte[3 + nameBytes.length];
                             ackHandshake[2] = CODEC_ACK_HANDSHAKE;
-                            DatagramPacket ackPacket = new DatagramPacket(ackHandshake, 3, receivePacket.getAddress(), receivePacket.getPort());
+                            System.arraycopy(nameBytes, 0, ackHandshake, 3, nameBytes.length);
+                            DatagramPacket ackPacket = new DatagramPacket(ackHandshake, ackHandshake.length, receivePacket.getAddress(), receivePacket.getPort());
                             
                             // 3x burst for reliability
                             for (int i = 0; i < 3; i++) {

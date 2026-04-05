@@ -455,7 +455,7 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Margin="24,60,24,60">
-                    <TextBlock Text="The Ethereal Command" FontSize="24" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="Ethereal Audio" FontSize="24" FontWeight="Bold" Foreground="White"/>
                     <TextBlock Text="AUDIO ENGINE ACTIVE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" Opacity="0.8" Margin="0,6,0,0"/>
                 </StackPanel>
 
@@ -765,6 +765,7 @@
                                 </Grid>
                             </StackPanel>
                         </Border>
+                        
 
                         <!-- Stats View (appears when connected) -->
                         <Border x:Name="StatsView" Style="{StaticResource ModernCard}" Margin="0,0,0,24" 
@@ -813,6 +814,22 @@
                                         BorderThickness="1" Margin="0,20,0,0" Height="40"
                                         Command="{Binding ViewModel.ToggleConnectPlayerCommand}"/>
                             </StackPanel>
+                        </Border>
+
+                        <!-- Persistence Engine (Inside discovery section to hide together) -->
+                        <Border Style="{StaticResource ModernCard}" Margin="0,0,0,20" Padding="16,14" Visibility="{Binding ViewModel.IsStatsVisible, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Width="32" Height="32" Background="{DynamicResource OutlineVariantColor}" CornerRadius="16" Margin="0,0,16,0">
+                                        <TextBlock Text="&#xE81C;" FontFamily="Segoe MDL2 Assets" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.8"/>
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Persistence Engine" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextSecBrush}"/>
+                                        <TextBlock Text="Automatically connect to last used IP" FontSize="11" Foreground="{DynamicResource TextSecBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                <CheckBox IsChecked="{Binding ViewModel.AutoConnect}" Style="{StaticResource EtherealToggle}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
                         </Border>
 
                         <!-- Discovery Section (Hidden when connected) -->
@@ -872,7 +889,7 @@
                                                             <Setter TargetName="Card" Property="RenderTransform">
                                                                 <Setter.Value>
                                                                     <ScaleTransform ScaleX="0.98" ScaleY="0.98" CenterX="100" CenterY="50"/>
-                                                                </Setter.Value> 
+                                                                </Setter.Value>
                                                             </Setter>
                                                         </Trigger>
                                                     </ControlTemplate.Triggers>
@@ -882,22 +899,6 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            
-                            <!-- Persistence Engine (Inside discovery section to hide together) -->
-                            <Border Style="{StaticResource ModernCard}" Margin="4,24,4,0" Padding="16,14">
-                                <Grid>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Border Width="32" Height="32" Background="{DynamicResource OutlineVariantColor}" CornerRadius="16" Margin="0,0,16,0">
-                                            <TextBlock Text="&#xE81C;" FontFamily="Segoe MDL2 Assets" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.8"/>
-                                        </Border>
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="Persistence Engine" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextSecBrush}"/>
-                                            <TextBlock Text="Automatically connect to last used IP" FontSize="11" Foreground="{DynamicResource TextSecBrush}"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                    <CheckBox IsChecked="{Binding ViewModel.AutoConnect}" Style="{StaticResource EtherealToggle}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                </Grid>
-                            </Border>
                         </StackPanel>
                     </StackPanel>
 
@@ -1029,13 +1030,7 @@
                         </Grid>
 
                         <!-- System Logs Section -->
-                        <TextBlock Text="System Logs" FontSize="24" FontWeight="SemiBold" Margin="0,48,0,0" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                        <Grid Margin="0,12,0,24">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Ellipse Width="8" Height="8" Fill="{DynamicResource SecondaryColor}" Margin="0,0,10,0"/>
-                                <TextBlock Text="LIVE TELEMETRY FEED" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" Opacity="0.8"/>
-                            </StackPanel>
-                        </Grid>
+                        <TextBlock Text="System Logs" FontSize="24" FontWeight="SemiBold" Margin="0,48,0,20" Foreground="{DynamicResource TextPrimaryBrush}"/>
 
                         <!-- Integrated Log Viewer -->
                         <Border Background="{DynamicResource SurfaceContainerLowestBrush}" CornerRadius="12" Padding="2" BorderThickness="1" BorderBrush="#1AFFFFFF">

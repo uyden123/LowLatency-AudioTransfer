@@ -17,6 +17,7 @@ public class PlayerAudioPipeline {
     private volatile android.media.AudioTrack audioTrack;
     
     private Thread playbackThread;
+    private Thread watchdogThread;
     private volatile boolean isPlaying = false;
     private final Object outputLock = new Object();
     private final short[] pcmBufferWorkspace = new short[960 * 2];
@@ -100,6 +101,36 @@ public class PlayerAudioPipeline {
         playbackThread = new Thread(this::playbackLoop, "PlayerPlaybackThread");
         playbackThread.setPriority(Thread.MAX_PRIORITY);
         playbackThread.start();
+
+        startWatchdog();
+    }
+
+    private void startWatchdog() {
+        watchdogThread = new Thread(() -> {
+            Log.i(TAG, "Watchdog thread started");
+            while (isPlaying) {
+                try {
+                    Thread.sleep(2500); // Check every 2.5 seconds
+                    if (isPlaying && !isAudioOutputAlive()) {
+                        Log.w(TAG, "Watchdog detected dead audio output, restarting...");
+                        restartAudioEngine();
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                } catch (Exception e) {
+                    Log.e(TAG, "Watchdog error", e);
+                }
+            }
+            Log.i(TAG, "Watchdog thread exiting");
+        }, "AudioWatchdog");
+        watchdogThread.start();
+    }
+
+    private void stopWatchdog() {
+        if (watchdogThread != null) {
+            watchdogThread.interrupt();
+            watchdogThread = null;
+        }
     }
 
     private void initAudioEngine() {
@@ -384,6 +415,7 @@ public class PlayerAudioPipeline {
 
     public void stop() {
         isPlaying = false;
+        stopWatchdog();
         if (playbackThread != null) { playbackThread.interrupt(); playbackThread = null; }
         if (aaudioPlayer != null) { aaudioPlayer.stop(); aaudioPlayer = null; }
         if (audioTrack != null) { try { audioTrack.stop(); audioTrack.release(); } catch (Exception ignored) {} audioTrack = null; }
@@ -427,7 +459,7 @@ public class PlayerAudioPipeline {
 
                 return true;
             } else {
-                return audioTrack != null;
+                return audioTrack != null && audioTrack.getPlayState() == android.media.AudioTrack.PLAYSTATE_PLAYING;
             }
         }
     }
