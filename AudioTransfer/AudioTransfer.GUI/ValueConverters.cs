@@ -57,4 +57,46 @@ namespace AudioTransfer.GUI.Converters
             throw new NotImplementedException();
         }
     }
+
+    /// <summary>
+    /// Converts a dB value (-100..0) to a percentage (0.0..1.0) for level meter width.
+    /// Used in Discord-style VAD slider.
+    /// </summary>
+    public class DbToPercentConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is double db)
+            {
+                // Clamp to -100..0, then normalize to 0..1
+                db = Math.Max(-100, Math.Min(0, db));
+                return (db + 100.0) / 100.0;
+            }
+            return 0.0;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// MultiValueConverter: takes (dB level, container width) and returns pixel width for level meter.
+    /// Used in Discord-style VAD slider to size the colored fill bar.
+    /// </summary>
+    public class LevelMeterWidthConverter : IMultiValueConverter
+    {
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (values.Length >= 2 && values[0] is double db && values[1] is double containerWidth)
+            {
+                db = Math.Max(-100, Math.Min(0, db));
+                double pct = (db + 100.0) / 100.0;
+                return Math.Max(0, pct * containerWidth);
+            }
+            return 0.0;
+        }
+
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+            => throw new NotImplementedException();
+    }
 }

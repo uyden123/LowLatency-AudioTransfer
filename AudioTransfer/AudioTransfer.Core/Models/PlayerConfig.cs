@@ -24,5 +24,8 @@ namespace AudioTransfer.Core.Models
         public string? LastServerDeviceId { get; set; }
         public string? LastPlayerDeviceId { get; set; }
 
+        // VAD Settings
+        public bool VadEnabled { get; set; } = false;
+        public double VadThreshold { get; set; } = -45.0; // dB
     }
 }

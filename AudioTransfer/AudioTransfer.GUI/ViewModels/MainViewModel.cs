@@ -172,6 +172,42 @@ namespace AudioTransfer.GUI.ViewModels
         [ObservableProperty]
         private bool _isLogsPaused;
 
+        [ObservableProperty]
+        private double _currentVolumeLevel = -100;
+
+        public bool IsAboveThreshold => CurrentVolumeLevel >= VadThreshold;
+
+        public bool VadEnabled
+        {
+            get => Config.VadEnabled;
+            set
+            {
+                if (Config.VadEnabled != value)
+                {
+                    Config.VadEnabled = value;
+                    _playerEngine.VadEnabled = value;
+                    OnPropertyChanged();
+                    if (!_isInitializing) _ = _configRepository.SaveAsync(Config);
+                }
+            }
+        }
+
+        public double VadThreshold
+        {
+            get => Config.VadThreshold;
+            set
+            {
+                if (Math.Abs(Config.VadThreshold - value) > 0.1)
+                {
+                    Config.VadThreshold = value;
+                    _playerEngine.VadThreshold = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(IsAboveThreshold));
+                    if (!_isInitializing) _ = _configRepository.SaveAsync(Config);
+                }
+            }
+        }
+
         public event EventHandler<(string Message, string Title)>? RequestShowNotification;
         public event EventHandler? RequestTransitionToStats;
         public event EventHandler? RequestTransitionToConnect;
@@ -252,6 +288,17 @@ namespace AudioTransfer.GUI.ViewModels
                     }
                 });
             };
+
+            _playerEngine.OnVolumeUpdate += (s, db) => 
+            {
+                // Gate noise floor: anything below -70dB is silence
+                double gated = db < -70 ? -100 : db;
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(() => {
+                    CurrentVolumeLevel = gated;
+                    OnPropertyChanged(nameof(IsAboveThreshold));
+                });
+            };
+
             CoreLogger.Instance.LogEvent += (s, e) => 
             {
                 if (IsLogsPaused) return;
@@ -275,7 +322,8 @@ namespace AudioTransfer.GUI.ViewModels
                 Time = $"[{log.Timestamp:HH:mm:ss}] ",
                 Level = $"[{log.Level.ToString().ToUpper()}] ",
                 Message = log.Message,
-                Color = GetLogBrush(log.Level)
+                Color = GetLogBrush(log.Level),
+                LogLevel = log.Level
             };
             SystemLogs.Add(vm);
             if (SystemLogs.Count > 500) SystemLogs.RemoveAt(0);
@@ -283,13 +331,22 @@ namespace AudioTransfer.GUI.ViewModels
 
         private string GetLogBrush(LogLevel level)
         {
+            bool dark = IsDarkTheme;
             return level switch
             {
-                LogLevel.Error => "#FF5252", // Red
-                LogLevel.Warning => "#FFB74D", // Warn orange
-                LogLevel.Debug => "#A3C9FF", // Accent blue highlight
-                _ => "#C0C7D4" // TextSecBrush hex
+                LogLevel.Error   => dark ? "#FF5252" : "#C62828",
+                LogLevel.Warning => dark ? "#FFB74D" : "#E56800",
+                LogLevel.Debug   => dark ? "#A3C9FF" : "#1A5276",
+                _                => dark ? "#C0C7D4" : "#3A4050"
             };
+        }
+
+        private void RefreshLogColors()
+        {
+            foreach (var log in SystemLogs)
+            {
+                log.Color = GetLogBrush(log.LogLevel);
+            }
         }
 
         private async Task StartStatsTimer()
@@ -474,8 +531,7 @@ namespace AudioTransfer.GUI.ViewModels
             }
                 // Final sync for app status
                 UpdateAppStatusText(null);
-                bool isVi = Language == "Vietnamese";
-                ServerButtonText = isVi ? "BẮT ĐẦU SERVER" : "START SERVER";
+                ServerButtonText = LanguageManager.Instance.GetString("BtnStartServer");
                 UpdateClientListPlaceholder();
             }
             finally
@@ -558,6 +614,12 @@ namespace AudioTransfer.GUI.ViewModels
             OnPropertyChanged(nameof(LaunchOnStartup));
             OnPropertyChanged(nameof(AutoConnect));
             OnPropertyChanged(nameof(MinimizeToTray));
+            OnPropertyChanged(nameof(VadEnabled));
+            OnPropertyChanged(nameof(VadThreshold));
+            OnPropertyChanged(nameof(IsAboveThreshold));
+
+            _playerEngine.VadEnabled = value.VadEnabled;
+            _playerEngine.VadThreshold = value.VadThreshold;
             
             // 3. Trigger events
             RequestApplyTheme?.Invoke(this, value.IsDarkTheme);
@@ -590,6 +652,8 @@ namespace AudioTransfer.GUI.ViewModels
                     Config.IsDarkTheme = value;
                     OnPropertyChanged();
                     RequestApplyTheme?.Invoke(this, value);
+                    RefreshLogColors();
+                    UpdateAppStatusText(IsClientConnected ? ActiveDeviceIp : null);
                     if (!_isInitializing) _ = _configRepository.SaveAsync(Config);
                 }
             }
@@ -648,6 +712,7 @@ namespace AudioTransfer.GUI.ViewModels
                 {
                     Config.Language = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(LanguageIndex));
                     UpdateAppStatusText(IsClientConnected ? ActiveDeviceIp : null);
                     RequestApplyLanguage?.Invoke(this, value);
                     if (!_isInitializing) _ = _configRepository.SaveAsync(Config);
@@ -655,31 +720,44 @@ namespace AudioTransfer.GUI.ViewModels
             }
         }
 
+        /// <summary>
+        /// Index-based property for the Language ComboBox binding.
+        /// 0 = English, 1 = Vietnamese
+        /// </summary>
+        public int LanguageIndex
+        {
+            get => Language == "Vietnamese" ? 1 : 0;
+            set
+            {
+                Language = value == 1 ? "Vietnamese" : "English";
+            }
+        }
+
         private void UpdateAppStatusText(string? connectedIp)
         {
-            bool isVi = Language == "Vietnamese";
+            var lm = LanguageManager.Instance;
             if (string.IsNullOrEmpty(connectedIp))
             {
-                AppStatusText = isVi ? "Chưa có thiết bị nào kết nối" : "No connected device yet";
+                AppStatusText = lm.GetString("StatusNoDevice");
             }
             else
             {
                 ActiveDeviceIp = connectedIp;
-                AppStatusText = isVi ? $"Đã kết nối qua mạng: {connectedIp}" : $"Connected over Network: {connectedIp}";
+                AppStatusText = string.Format(lm.GetString("StatusConnected"), connectedIp);
             }
             UpdateClientListPlaceholder();
         }
 
         private void UpdateClientListPlaceholder()
         {
-            bool isVi = Language == "Vietnamese";
+            var lm = LanguageManager.Instance;
             if (!IsServerRunning)
             {
-                ClientListPlaceholder = isVi ? "SERVER ĐANG TẮT" : "SERVER OFFLINE";
+                ClientListPlaceholder = lm.GetString("StatusServerOffline");
             }
             else if (ConnectedClients.Count == 0)
             {
-                ClientListPlaceholder = isVi ? "ĐANG CHỜ KẾT NỐI..." : "WAITING FOR CONNECTIONS...";
+                ClientListPlaceholder = lm.GetString("StatusWaitingConnections");
             }
             else
             {
@@ -788,13 +866,13 @@ namespace AudioTransfer.GUI.ViewModels
         [RelayCommand]
         private void ToggleServer()
         {
-            bool isVi = Language == "Vietnamese";
+            var lm = LanguageManager.Instance;
             if (_serverEngine.IsRunning)
             {
                 _serverEngine.Stop();
                 IsServerRunning = false;
-                AppStatusText = isVi ? "Server đã dừng." : "Server Stopped.";
-                ServerButtonText = isVi ? "BẮT ĐẦU SERVER" : "START SERVER";
+                AppStatusText = lm.GetString("StatusServerStopped");
+                ServerButtonText = lm.GetString("BtnStartServer");
             }
             else
             {
@@ -802,12 +880,12 @@ namespace AudioTransfer.GUI.ViewModels
                 {
                     _serverEngine.StartWasapiToAndroid(5000, SelectedCaptureDevice?.Id, DeviceName);
                     IsServerRunning = true;
-                    AppStatusText = isVi ? "Server đã bật (Port 5000)." : "Server Started on port 5000.";
-                    ServerButtonText = isVi ? "DỪNG SERVER" : "STOP SERVER";
+                    AppStatusText = lm.GetString("StatusServerStarted");
+                    ServerButtonText = lm.GetString("BtnStopServer");
                 }
                 catch (Exception ex)
                 {
-                    NotifyUser(isVi ? $"Không thể bật server: {ex.Message}" : $"Failed to start server: {ex.Message}", isVi ? "Lỗi Server" : "Server Error");
+                    NotifyUser(string.Format(lm.GetString("ErrServerStart"), ex.Message), lm.GetString("ErrServerTitle"));
                 }
             }
             UpdateClientListPlaceholder();
@@ -910,12 +988,19 @@ namespace AudioTransfer.GUI.ViewModels
         public string DeviceType { get; set; } = "Device";
     }
 
-    public class LogMessageViewModel
+    public class LogMessageViewModel : ObservableObject
     {
         public string Time { get; set; } = string.Empty;
         public string Level { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
-        public string Color { get; set; } = "TextSecBrush";
+        public LogLevel LogLevel { get; set; } = LogLevel.Info;
+
+        private string _color = "#C0C7D4";
+        public string Color
+        {
+            get => _color;
+            set => SetProperty(ref _color, value);
+        }
     }
 }
 

@@ -45,6 +45,22 @@ namespace AudioTransfer.Core.Facade
         public MicJitterBuffer? MicJitter => _micJitterBuffer;
         public UdpMicReceiver? MicReceiver => _udpMicReceiver;
 
+        private bool _vadEnabled;
+        public bool VadEnabled 
+        { 
+            get => _vadEnabled; 
+            set { _vadEnabled = value; if (_playbackOrchestrator != null) _playbackOrchestrator.VadEnabled = value; }
+        }
+
+        private double _vadThreshold = -45.0;
+        public double VadThreshold 
+        { 
+            get => _vadThreshold; 
+            set { _vadThreshold = value; if (_playbackOrchestrator != null) _playbackOrchestrator.VadThreshold = value; }
+        }
+
+        public event EventHandler<double>? OnVolumeUpdate;
+
         public PlayerEngine()
         {
             _systemAudio = new SystemAudioController(Log);
@@ -100,6 +116,9 @@ namespace AudioTransfer.Core.Facade
             _wasapiPlayer.Start();
 
             _playbackOrchestrator = new PlayerPlaybackOrchestrator(_micJitterBuffer, _opusDecoder, _wasapiPlayer, _stats, Log);
+            _playbackOrchestrator.VadEnabled = _vadEnabled;
+            _playbackOrchestrator.VadThreshold = _vadThreshold;
+            _playbackOrchestrator.OnVolumeUpdate += (db) => OnVolumeUpdate?.Invoke(this, db);
             _playbackOrchestrator.Start();
 
             Log($"[PlayerEngine] Started. Listening on port {androidPort}. Handshake initiated to {androidIp}");

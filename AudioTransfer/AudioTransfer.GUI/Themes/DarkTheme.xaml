@@ -60,6 +60,7 @@
     <SolidColorBrush x:Key="ErrorDimColor" Color="{StaticResource ErrorDimColorRaw}"/>
     <Color x:Key="SuccessColorRaw">#CFBDFF</Color>                   <!-- secondary for active/success -->
     <SolidColorBrush x:Key="SuccessColor" Color="{StaticResource SuccessColorRaw}"/>
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColorRaw}"/>
 
     <!-- ═══════════════════════════════════════════════════ -->
     <!-- BRUSHES                                             -->
@@ -105,5 +106,13 @@
     <SolidColorBrush x:Key="ScrollbarThumbBrush" Color="#33FFFFFF"/>
     <SolidColorBrush x:Key="NavForegroundBrush" Color="#8090A0"/>
     <SolidColorBrush x:Key="NavHoverBrush" Color="#C0C7D4"/>
+
+    <!-- Theme-Adaptive Brushes (Dark-specific) -->
+    <SolidColorBrush x:Key="CardOverlayBrush" Color="#1AFFFFFF"/>          <!-- 10% white overlay for cards -->
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#1AFFFFFF"/>           <!-- subtle card borders -->
+    <SolidColorBrush x:Key="ElevatedTextBrush" Color="#FFFFFF"/>           <!-- high-emphasis text on cards -->
+    <SolidColorBrush x:Key="StatusBarBrush" Color="#0A0A0A"/>              <!-- bottom bar -->
+    <SolidColorBrush x:Key="StatusBarBorderBrush" Color="#1AFFFFFF"/>      <!-- bottom bar top border -->
+    <Color x:Key="ProgressTrackColor">#2A2A2A</Color>                      <!-- progress bar empty track -->
 
 </ResourceDictionary>

@@ -2,33 +2,115 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:system="clr-namespace:System;assembly=mscorlib">
 
-    <system:String x:Key="LblServerTabTitle">Server</system:String>
-    <system:String x:Key="LblServerTabDesc">Send audio from this device to another</system:String>
-    <system:String x:Key="LblSendAudio">Send audio</system:String>
-    <system:String x:Key="LblSendAudioDesc">Send the audio played on this computer to another device</system:String>
-    <system:String x:Key="LblConnections">Connections</system:String>
-    <system:String x:Key="LblAudioDevice">Audio device</system:String>
-    <system:String x:Key="LblAudioDeviceDesc">Select which audio device to stream</system:String>
-    <system:String x:Key="LblDeviceName">Device name</system:String>
-    <system:String x:Key="LblDeviceNameDesc">The name displayed to other devices</system:String>
-    <system:String x:Key="LblDarkTheme">Dark theme</system:String>
-    <system:String x:Key="LblTray">Minimize to system tray</system:String>
-    <system:String x:Key="LblTrayDesc">Hide the window in the system tray when minimized</system:String>
-    <system:String x:Key="LblLanguage">Language</system:String>
-    <system:String x:Key="LblLanguageDesc">Choose the display language</system:String>
-    <system:String x:Key="LblStartup">Launch AudioTransfer on computer startup</system:String>
-    <system:String x:Key="LblAutoMute">Mute system audio when streaming</system:String>
-    <system:String x:Key="LblAutoMuteDesc">Automatically mute the PC when audio is being sent</system:String>
-    <system:String x:Key="LblLogs">System logs</system:String>
-    <system:String x:Key="LblLogsDesc">View application events and debug information</system:String>
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- NAVIGATION                                          -->
+    <!-- ═══════════════════════════════════════════════════ -->
     <system:String x:Key="NavServerText">Server</system:String>
     <system:String x:Key="NavPlayerText">Player</system:String>
     <system:String x:Key="NavSettingsText">Settings</system:String>
-    <system:String x:Key="LblSelectAudioDevice">Select audio device</system:String>
-    <system:String x:Key="LblSelectAudioDeviceDesc">Choose which audio output to capture and stream</system:String>
-    <system:String x:Key="ChkAutoConnect">Auto connect</system:String>
+    <system:String x:Key="AppTitle">Ethereal Audio</system:String>
+    <system:String x:Key="LblAudioEngineActive">AUDIO ENGINE ACTIVE</system:String>
 
-    <!-- Icons (Segoe MDL2 Assets) -->
+    <!-- Page Titles (Top Bar) -->
+    <system:String x:Key="PageTitleServer">SERVER CONSOLE</system:String>
+    <system:String x:Key="PageTitlePlayer">PLAYER HUB</system:String>
+    <system:String x:Key="PageTitleSettings">GENERAL SETTINGS</system:String>
+
+    <!-- Status Indicator -->
+    <system:String x:Key="LblLive">LIVE</system:String>
+    <system:String x:Key="LblOffline">OFFLINE</system:String>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- SERVER TAB                                          -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <system:String x:Key="LblHostIdentity">HOST IDENTITY</system:String>
+    <system:String x:Key="LblStreamingHealth">STREAMING HEALTH</system:String>
+    <system:String x:Key="LblEngineLoad">Engine Load</system:String>
+    <system:String x:Key="LblBandwidth">BANDWIDTH</system:String>
+    <system:String x:Key="LblTotalData">TOTAL DATA</system:String>
+    <system:String x:Key="LblAudioRouting">Audio Routing</system:String>
+    <system:String x:Key="LblSelectAudioSource">SELECT AUDIO SOURCE DEVICE</system:String>
+    <system:String x:Key="LblMuteWhenStreaming">Mute audio on this PC when streaming</system:String>
+    <system:String x:Key="LblMuteWhenStreamingDesc">Prevents echo by silencing local playback</system:String>
+    <system:String x:Key="LblConnected">Connected</system:String>
+    <system:String x:Key="LblActive">ACTIVE</system:String>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- PLAYER TAB                                          -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <system:String x:Key="LblManualConnection">MANUAL CONNECTION</system:String>
+    <system:String x:Key="LblIpPlaceholder">Enter IP Address (e.g. 192.168.1.104)</system:String>
+    <system:String x:Key="LblConnect">CONNECT</system:String>
+    <system:String x:Key="LblActiveSession">ACTIVE SESSION</system:String>
+    <system:String x:Key="LblBuffer">BUFFER</system:String>
+    <system:String x:Key="LblLatency">LATENCY</system:String>
+    <system:String x:Key="LblLoss">LOSS</system:String>
+    <system:String x:Key="LblInputSensitivity">INPUT SENSITIVITY</system:String>
+    <system:String x:Key="LblAdjustThreshold">Adjust the threshold to filter out background noise.</system:String>
+    <system:String x:Key="LblSensitive">Sensitive</system:String>
+    <system:String x:Key="LblLessSensitive">Less Sensitive</system:String>
+    <system:String x:Key="LblDisconnectSession">DISCONNECT SESSION</system:String>
+    <system:String x:Key="LblPersistenceEngine">Persistence Engine</system:String>
+    <system:String x:Key="LblAutoConnectDesc">Automatically connect to last used IP</system:String>
+    <system:String x:Key="LblNearbyServers">NEARBY SERVERS</system:String>
+    <system:String x:Key="LblSearching">SEARCHING...</system:String>
+    <system:String x:Key="LblRefresh">REFRESH</system:String>
+    <system:String x:Key="LblModeSelection">MODE SELECTION</system:String>
+    <system:String x:Key="LblMicMode">MIC Mode</system:String>
+    <system:String x:Key="LblPlayback">PLAYBACK</system:String>
+    <system:String x:Key="LblRoutingHint">ROUTING HINT</system:String>
+    <system:String x:Key="LblRoutingHintDesc">Audio is currently being routed to CABLE Input. Ensure your DAW or communication app is listening on this virtual bridge.</system:String>
+    <system:String x:Key="LblLocalOutputDevice">LOCAL OUTPUT DEVICE</system:String>
+    <system:String x:Key="LblLatencyOptimization">LATENCY OPTIMIZATION</system:String>
+    <system:String x:Key="LblUltraLow">ULTRA-LOW</system:String>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- SETTINGS TAB                                        -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <system:String x:Key="LblSettings">SETTINGS</system:String>
+    <system:String x:Key="LblSettingsDesc">Core application parameters and behavioral configuration.</system:String>
+    <system:String x:Key="LblDeviceConfig">DEVICE CONFIGURATION</system:String>
+    <system:String x:Key="LblMachineNetId">Machine Network Identifier</system:String>
+    <system:String x:Key="LblLocalization">LOCALIZATION</system:String>
+    <system:String x:Key="LblSystemLanguage">System Language</system:String>
+    <system:String x:Key="LblDarkTheme">Dark Theme</system:String>
+    <system:String x:Key="LblDarkThemeDesc">Enabled globally</system:String>
+    <system:String x:Key="LblMinimizeToTray">Minimize to Tray</system:String>
+    <system:String x:Key="LblMinimizeToTrayDesc">Keep process alive</system:String>
+    <system:String x:Key="LblLaunchOnStartup">Launch on Startup</system:String>
+    <system:String x:Key="LblLaunchOnStartupDesc">Boot with system</system:String>
+    <system:String x:Key="LblSystemLogs">System Logs</system:String>
+    <system:String x:Key="LblLiveTelemetry">LIVE TELEMETRY STREAM</system:String>
+    <system:String x:Key="TipClearConsole">Clear Console</system:String>
+    <system:String x:Key="TipPauseResume">Pause/Resume</system:String>
+    <system:String x:Key="TipReloadBuffer">Reload Buffer</system:String>
+    <system:String x:Key="TipExportToFile">Export to File</system:String>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- BOTTOM STATUS BAR                                   -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <system:String x:Key="LblEngineOnline">ENGINE ONLINE</system:String>
+    <system:String x:Key="LblSystemHealth">SYSTEM HEALTH</system:String>
+    <system:String x:Key="LblLogs">LOGS</system:String>
+    <system:String x:Key="LblDiagnostics">DIAGNOSTICS</system:String>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- VIEWMODEL (Code-behind strings)                     -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <system:String x:Key="StatusNoDevice">No connected device yet</system:String>
+    <system:String x:Key="StatusConnected">Connected over Network: {0}</system:String>
+    <system:String x:Key="StatusServerOffline">SERVER OFFLINE</system:String>
+    <system:String x:Key="StatusWaitingConnections">WAITING FOR CONNECTIONS...</system:String>
+    <system:String x:Key="BtnStartServer">START SERVER</system:String>
+    <system:String x:Key="BtnStopServer">STOP SERVER</system:String>
+    <system:String x:Key="StatusServerStarted">Server Started on port 5000.</system:String>
+    <system:String x:Key="StatusServerStopped">Server Stopped.</system:String>
+    <system:String x:Key="ErrServerStart">Failed to start server: {0}</system:String>
+    <system:String x:Key="ErrServerTitle">Server Error</system:String>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- Icons (Segoe MDL2 Assets) - Language-independent    -->
+    <!-- ═══════════════════════════════════════════════════ -->
     <system:String x:Key="IconServer">&#xEBC6;</system:String>
     <system:String x:Key="IconPlayer">&#xE768;</system:String>
     <system:String x:Key="IconSettings">&#xE713;</system:String>

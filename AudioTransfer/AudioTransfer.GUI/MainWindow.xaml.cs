@@ -227,25 +227,7 @@ namespace AudioTransfer.GUI
 
         public void ApplyLanguage(string lang)
         {
-            try
-            {
-                bool isVi = lang == "Vietnamese";
-                string langFile = isVi ? "Themes/Strings.vi.xaml" : "Themes/Strings.en.xaml";
-                var newDict = new ResourceDictionary { Source = new Uri(langFile, UriKind.Relative) };
-
-                var existingDict = System.Windows.Application.Current.Resources.MergedDictionaries
-                    .FirstOrDefault(d => d.Source != null && (d.Source.OriginalString.Contains("Strings.vi.xaml") || d.Source.OriginalString.Contains("Strings.en.xaml")));
-
-                if (existingDict != null)
-                {
-                    System.Windows.Application.Current.Resources.MergedDictionaries.Remove(existingDict);
-                }
-                System.Windows.Application.Current.Resources.MergedDictionaries.Add(newDict);
-            }
-            catch (Exception ex)
-            {
-                CoreLogger.Instance.Log($"Failed to apply language: {ex.Message}");
-            }
+            LanguageManager.Instance.ApplyLanguage(lang);
         }
 
 
@@ -285,17 +267,17 @@ namespace AudioTransfer.GUI
                 if (rb == NavServer)
                 {
                     newIndex = 0;
-                    TxtActivePage.Text = "SERVER CONSOLE";
+                    TxtActivePage.Text = LanguageManager.Instance.GetString("PageTitleServer");
                 }
                 else if (rb == NavPlayer)
                 {
                     newIndex = 1;
-                    TxtActivePage.Text = "PLAYER HUB";
+                    TxtActivePage.Text = LanguageManager.Instance.GetString("PageTitlePlayer");
                 }
                 else if (rb == NavSettings)
                 {
                     newIndex = 2;
-                    TxtActivePage.Text = "GENERAL SETTINGS";
+                    TxtActivePage.Text = LanguageManager.Instance.GetString("PageTitleSettings");
                 }
 
                 if (newIndex != oldIndex)

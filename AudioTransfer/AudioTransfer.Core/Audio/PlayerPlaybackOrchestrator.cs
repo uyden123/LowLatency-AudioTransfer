@@ -30,6 +30,15 @@ namespace AudioTransfer.Core.Audio
         private CancellationTokenSource? _cts;
         private bool _isRunning;
         private long _lastDriftLogTime;
+        
+        // VAD
+        public bool VadEnabled { get; set; } = false;
+        public double VadThreshold { get; set; } = -45.0; // dB
+        public event Action<double>? OnVolumeUpdate; // -100 to 0 dB
+
+        private double _currentRms;
+        private int _vadHangoverCounter = 0;
+        private const int VAD_HANGOVER_PACKETS = 10; // 200ms
 
         public PlayerPlaybackOrchestrator(
             MicJitterBuffer jitterBuffer, 
@@ -91,11 +100,45 @@ namespace AudioTransfer.Core.Audio
                     if (packet.IsPLC)
                     {
                         samplesPerChannel = _decoder.DecodePLCTo(_pcmBuffer);
+                        // Zero level for PLC
+                        _currentRms = 0;
                     }
                     else
                     {
                         samplesPerChannel = _decoder.DecodeTo(packet.Data, 0, packet.Length, _pcmBuffer);
                         
+                        // Calculate RMS level
+                        if (samplesPerChannel > 0) 
+                        {
+                            double sum = 0;
+                            for (int i = 0; i < samplesPerChannel; i++) {
+                                double s = _pcmBuffer[i] / 32768.0;
+                                sum += s * s;
+                            }
+                            _currentRms = Math.Sqrt(sum / samplesPerChannel);
+                        }
+                        
+                        // Notify UI about volume level
+                        double db = 20 * Math.Log10(_currentRms + 1e-9);
+                        OnVolumeUpdate?.Invoke(db);
+
+                        // VAD / Gating Logic
+                        if (VadEnabled)
+                        {
+                            bool above = db >= VadThreshold;
+                            if (above) {
+                                _vadHangoverCounter = VAD_HANGOVER_PACKETS;
+                            } else {
+                                if (_vadHangoverCounter > 0) {
+                                    _vadHangoverCounter--;
+                                    // Let the audio pass during hangover
+                                } else {
+                                    // Gate open: absolute silence
+                                    Array.Clear(_pcmBuffer, 0, samplesPerChannel);
+                                }
+                            }
+                        }
+
                         // Drift compensation
                         int bufferedMs = (int)(_wasapiPlayer.BufferedBytes * 1000L / (48000 * 4));
                         double ratio = _driftManager.CalculateRatio(_jitterBuffer, bufferedMs);

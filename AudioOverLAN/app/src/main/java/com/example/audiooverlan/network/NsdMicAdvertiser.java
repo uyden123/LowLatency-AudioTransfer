@@ -25,7 +25,6 @@ public class NsdMicAdvertiser {
     private NsdManager.RegistrationListener registrationListener;
     private volatile boolean isRegistered = false;
     private String registeredName;
-    private final int PORT = 5353;
 
     /**
      * @param context Application context
@@ -49,7 +48,6 @@ public class NsdMicAdvertiser {
         NsdServiceInfo serviceInfo = new NsdServiceInfo();
         serviceInfo.setServiceName(SERVICE_NAME);
         serviceInfo.setServiceType(SERVICE_TYPE);
-        serviceInfo.setPort(PORT);
         
         // Add human-readable device name to TXT record
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -63,7 +61,7 @@ public class NsdMicAdvertiser {
                 registeredName = info.getServiceName();
                 isRegistered = true;
                 Log.i(TAG, "Service registered: " + registeredName
-                        + " type=" + SERVICE_TYPE + " port=" + PORT);
+                        + " type=" + SERVICE_TYPE);
             }
 
             @Override
@@ -86,7 +84,7 @@ public class NsdMicAdvertiser {
 
         try {
             nsdManager.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, registrationListener);
-            Log.i(TAG, "Registering service: " + SERVICE_NAME + " type=" + SERVICE_TYPE + " port=" + PORT);
+            Log.i(TAG, "Registering service: " + SERVICE_NAME + " type=" + SERVICE_TYPE);
         } catch (Exception e) {
             Log.e(TAG, "Failed to register NSD service", e);
         }

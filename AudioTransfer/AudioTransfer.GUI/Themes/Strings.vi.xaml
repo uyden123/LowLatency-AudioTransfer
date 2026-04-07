@@ -2,33 +2,115 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:system="clr-namespace:System;assembly=mscorlib">
 
-    <system:String x:Key="LblServerTabTitle">Máy chủ</system:String>
-    <system:String x:Key="LblServerTabDesc">Gửi âm thanh từ máy tính này sang thiết bị khác</system:String>
-    <system:String x:Key="LblSendAudio">Gửi âm thanh</system:String>
-    <system:String x:Key="LblSendAudioDesc">Truyền âm thanh đang phát trên máy tính này tới thiết bị khác</system:String>
-    <system:String x:Key="LblConnections">Kết nối</system:String>
-    <system:String x:Key="LblAudioDevice">Thiết bị âm thanh</system:String>
-    <system:String x:Key="LblAudioDeviceDesc">Chọn thiết bị âm thanh để truyền phát</system:String>
-    <system:String x:Key="LblDeviceName">Tên thiết bị</system:String>
-    <system:String x:Key="LblDeviceNameDesc">Tên hiển thị với các thiết bị khác</system:String>
-    <system:String x:Key="LblDarkTheme">Giao diện tối</system:String>
-    <system:String x:Key="LblTray">Thu nhỏ xuống khay hệ thống</system:String>
-    <system:String x:Key="LblTrayDesc">Ẩn cửa sổ xuống khay hệ thống khi thu nhỏ</system:String>
-    <system:String x:Key="LblLanguage">Ngôn ngữ</system:String>
-    <system:String x:Key="LblLanguageDesc">Chọn ngôn ngữ hiển thị</system:String>
-    <system:String x:Key="LblStartup">Khởi động cùng máy tính</system:String>
-    <system:String x:Key="LblAutoMute">Tắt tiếng hệ thống khi đang phát</system:String>
-    <system:String x:Key="LblAutoMuteDesc">Tự động tắt tiếng PC khi âm thanh đang được gửi đi</system:String>
-    <system:String x:Key="LblLogs">Nhật ký hệ thống</system:String>
-    <system:String x:Key="LblLogsDesc">Xem các sự kiện ứng dụng và thông tin gỡ lỗi</system:String>
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- ĐIỀU HƯỚNG                                          -->
+    <!-- ═══════════════════════════════════════════════════ -->
     <system:String x:Key="NavServerText">Máy chủ</system:String>
     <system:String x:Key="NavPlayerText">Trình phát</system:String>
     <system:String x:Key="NavSettingsText">Cài đặt</system:String>
-    <system:String x:Key="LblSelectAudioDevice">Chọn thiết bị âm thanh</system:String>
-    <system:String x:Key="LblSelectAudioDeviceDesc">Chọn đầu ra âm thanh bạn muốn ghi lại và truyền phát</system:String>
-    <system:String x:Key="ChkAutoConnect">Tự kết nối</system:String>
+    <system:String x:Key="AppTitle">Ethereal Audio</system:String>
+    <system:String x:Key="LblAudioEngineActive">ĐANG HOẠT ĐỘNG</system:String>
 
-    <!-- Icons (Segoe MDL2 Assets) -->
+    <!-- Tiêu đề trang (Thanh trên) -->
+    <system:String x:Key="PageTitleServer">BẢNG ĐIỀU KHIỂN MÁY CHỦ</system:String>
+    <system:String x:Key="PageTitlePlayer">TRUNG TÂM TRÌNH PHÁT</system:String>
+    <system:String x:Key="PageTitleSettings">CÀI ĐẶT CHUNG</system:String>
+
+    <!-- Trạng thái -->
+    <system:String x:Key="LblLive">TRỰC TIẾP</system:String>
+    <system:String x:Key="LblOffline">NGOẠI TUYẾN</system:String>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- TAB MÁY CHỦ                                        -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <system:String x:Key="LblHostIdentity">NHẬN DẠNG MÁY CHỦ</system:String>
+    <system:String x:Key="LblStreamingHealth">TÌNH TRẠNG PHÁT</system:String>
+    <system:String x:Key="LblEngineLoad">Tải hệ thống</system:String>
+    <system:String x:Key="LblBandwidth">BĂNG THÔNG</system:String>
+    <system:String x:Key="LblTotalData">TỔNG DỮ LIỆU</system:String>
+    <system:String x:Key="LblAudioRouting">Định tuyến âm thanh</system:String>
+    <system:String x:Key="LblSelectAudioSource">CHỌN THIẾT BỊ NGUỒN ÂM THANH</system:String>
+    <system:String x:Key="LblMuteWhenStreaming">Tắt tiếng PC khi đang phát</system:String>
+    <system:String x:Key="LblMuteWhenStreamingDesc">Ngăn tiếng vọng bằng cách tắt phát lại cục bộ</system:String>
+    <system:String x:Key="LblConnected">Đã kết nối</system:String>
+    <system:String x:Key="LblActive">ĐANG KẾT NỐI</system:String>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- TAB TRÌNH PHÁT                                      -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <system:String x:Key="LblManualConnection">KẾT NỐI THỦ CÔNG</system:String>
+    <system:String x:Key="LblIpPlaceholder">Nhập địa chỉ IP (vd: 192.168.1.104)</system:String>
+    <system:String x:Key="LblConnect">KẾT NỐI</system:String>
+    <system:String x:Key="LblActiveSession">PHIÊN ĐANG HOẠT ĐỘNG</system:String>
+    <system:String x:Key="LblBuffer">BỘ ĐỆM</system:String>
+    <system:String x:Key="LblLatency">ĐỘ TRỄ</system:String>
+    <system:String x:Key="LblLoss">MẤT GÓI</system:String>
+    <system:String x:Key="LblInputSensitivity">ĐỘ NHẠY ĐẦU VÀO</system:String>
+    <system:String x:Key="LblAdjustThreshold">Điều chỉnh ngưỡng để lọc tiếng ồn nền.</system:String>
+    <system:String x:Key="LblSensitive">Nhạy</system:String>
+    <system:String x:Key="LblLessSensitive">Ít nhạy hơn</system:String>
+    <system:String x:Key="LblDisconnectSession">NGẮT KẾT NỐI PHIÊN</system:String>
+    <system:String x:Key="LblPersistenceEngine">Kết nối liên tục</system:String>
+    <system:String x:Key="LblAutoConnectDesc">Tự động kết nối đến IP đã dùng gần nhất</system:String>
+    <system:String x:Key="LblNearbyServers">MÁY CHỦ LÂN CẬN</system:String>
+    <system:String x:Key="LblSearching">ĐANG TÌM KIẾM...</system:String>
+    <system:String x:Key="LblRefresh">LÀM MỚI</system:String>
+    <system:String x:Key="LblModeSelection">CHỌN CHẾ ĐỘ</system:String>
+    <system:String x:Key="LblMicMode">Chế độ MIC</system:String>
+    <system:String x:Key="LblPlayback">PHÁT LẠI</system:String>
+    <system:String x:Key="LblRoutingHint">GỢI Ý ĐỊNH TUYẾN</system:String>
+    <system:String x:Key="LblRoutingHintDesc">Âm thanh hiện đang được chuyển đến CABLE Input. Đảm bảo DAW hoặc ứng dụng giao tiếp đang lắng nghe trên cầu nối ảo này.</system:String>
+    <system:String x:Key="LblLocalOutputDevice">THIẾT BỊ PHÁT CỤC BỘ</system:String>
+    <system:String x:Key="LblLatencyOptimization">TỐI ƯU ĐỘ TRỄ</system:String>
+    <system:String x:Key="LblUltraLow">CỰC THẤP</system:String>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- TAB CÀI ĐẶT                                        -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <system:String x:Key="LblSettings">CÀI ĐẶT</system:String>
+    <system:String x:Key="LblSettingsDesc">Cấu hình tham số ứng dụng và hành vi hệ thống.</system:String>
+    <system:String x:Key="LblDeviceConfig">CẤU HÌNH THIẾT BỊ</system:String>
+    <system:String x:Key="LblMachineNetId">Tên nhận dạng mạng</system:String>
+    <system:String x:Key="LblLocalization">BẢN ĐỊA HÓA</system:String>
+    <system:String x:Key="LblSystemLanguage">Ngôn ngữ hệ thống</system:String>
+    <system:String x:Key="LblDarkTheme">Giao diện tối</system:String>
+    <system:String x:Key="LblDarkThemeDesc">Bật cho toàn ứng dụng</system:String>
+    <system:String x:Key="LblMinimizeToTray">Thu nhỏ xuống khay</system:String>
+    <system:String x:Key="LblMinimizeToTrayDesc">Giữ tiến trình hoạt động</system:String>
+    <system:String x:Key="LblLaunchOnStartup">Khởi động cùng hệ thống</system:String>
+    <system:String x:Key="LblLaunchOnStartupDesc">Khởi chạy cùng máy tính</system:String>
+    <system:String x:Key="LblSystemLogs">Nhật ký hệ thống</system:String>
+    <system:String x:Key="LblLiveTelemetry">LUỒNG DỮ LIỆU TRỰC TIẾP</system:String>
+    <system:String x:Key="TipClearConsole">Xóa bảng điều khiển</system:String>
+    <system:String x:Key="TipPauseResume">Tạm dừng/Tiếp tục</system:String>
+    <system:String x:Key="TipReloadBuffer">Tải lại bộ đệm</system:String>
+    <system:String x:Key="TipExportToFile">Xuất ra tệp</system:String>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- THANH TRẠNG THÁI                                    -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <system:String x:Key="LblEngineOnline">ĐANG HOẠT ĐỘNG</system:String>
+    <system:String x:Key="LblSystemHealth">SỨC KHỎE HỆ THỐNG</system:String>
+    <system:String x:Key="LblLogs">NHẬT KÝ</system:String>
+    <system:String x:Key="LblDiagnostics">CHẨN ĐOÁN</system:String>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- VIEWMODEL (Chuỗi dùng trong code-behind)            -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <system:String x:Key="StatusNoDevice">Chưa có thiết bị nào kết nối</system:String>
+    <system:String x:Key="StatusConnected">Đã kết nối qua mạng: {0}</system:String>
+    <system:String x:Key="StatusServerOffline">SERVER ĐANG TẮT</system:String>
+    <system:String x:Key="StatusWaitingConnections">ĐANG CHỜ KẾT NỐI...</system:String>
+    <system:String x:Key="BtnStartServer">BẮT ĐẦU SERVER</system:String>
+    <system:String x:Key="BtnStopServer">DỪNG SERVER</system:String>
+    <system:String x:Key="StatusServerStarted">Server đã bật (Port 5000).</system:String>
+    <system:String x:Key="StatusServerStopped">Server đã dừng.</system:String>
+    <system:String x:Key="ErrServerStart">Không thể bật server: {0}</system:String>
+    <system:String x:Key="ErrServerTitle">Lỗi Server</system:String>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- Biểu tượng (Segoe MDL2 Assets) - Không phụ thuộc ngôn ngữ -->
+    <!-- ═══════════════════════════════════════════════════ -->
     <system:String x:Key="IconServer">&#xEBC6;</system:String>
     <system:String x:Key="IconPlayer">&#xE768;</system:String>
     <system:String x:Key="IconSettings">&#xE713;</system:String>
