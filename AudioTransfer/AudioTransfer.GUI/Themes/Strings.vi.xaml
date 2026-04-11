@@ -55,7 +55,7 @@
     <system:String x:Key="LblNearbyServers">MÁY CHỦ LÂN CẬN</system:String>
     <system:String x:Key="LblSearching">ĐANG TÌM KIẾM...</system:String>
     <system:String x:Key="LblRefresh">LÀM MỚI</system:String>
-    <system:String x:Key="LblModeSelection">CHỌN CHẾ ĐỘ</system:String>
+    <system:String x:Key="LblModeSelection">CHỌN THIẾT BỊ ĐẦU RA</system:String>
     <system:String x:Key="LblMicMode">Chế độ MIC</system:String>
     <system:String x:Key="LblPlayback">PHÁT LẠI</system:String>
     <system:String x:Key="LblRoutingHint">GỢI Ý ĐỊNH TUYẾN</system:String>
@@ -77,8 +77,9 @@
     <system:String x:Key="LblDarkThemeDesc">Bật cho toàn ứng dụng</system:String>
     <system:String x:Key="LblMinimizeToTray">Thu nhỏ xuống khay</system:String>
     <system:String x:Key="LblMinimizeToTrayDesc">Giữ tiến trình hoạt động</system:String>
-    <system:String x:Key="LblLaunchOnStartup">Khởi động cùng hệ thống</system:String>
+    <system:String x:Key="LblLaunchOnStartup">Khởi động cùng OS</system:String>
     <system:String x:Key="LblLaunchOnStartupDesc">Khởi chạy cùng máy tính</system:String>
+    <system:String x:Key="LblStartMinimized">Chạy ngầm</system:String>
     <system:String x:Key="LblSystemLogs">Nhật ký hệ thống</system:String>
     <system:String x:Key="LblLiveTelemetry">LUỒNG DỮ LIỆU TRỰC TIẾP</system:String>
     <system:String x:Key="TipClearConsole">Xóa bảng điều khiển</system:String>

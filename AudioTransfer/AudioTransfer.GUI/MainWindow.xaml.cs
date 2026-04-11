@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.IO;
 using System;
 using System.Windows.Controls;
@@ -25,6 +25,7 @@ namespace AudioTransfer.GUI
     {
         private readonly IServerEngine _serverEngine;
         private readonly IPlayerEngine _playerEngine;
+        private bool _isForceClosing = false;
         
         public ViewModels.MainViewModel ViewModel { get; }
 
@@ -228,6 +229,19 @@ namespace AudioTransfer.GUI
         public void ApplyLanguage(string lang)
         {
             LanguageManager.Instance.ApplyLanguage(lang);
+            UpdateActivePageText();
+        }
+
+        private void UpdateActivePageText()
+        {
+            if (MainTabs == null || TxtActivePage == null) return;
+
+            if (MainTabs.SelectedIndex == 0)
+                TxtActivePage.Text = LanguageManager.Instance.GetString("PageTitleServer");
+            else if (MainTabs.SelectedIndex == 1)
+                TxtActivePage.Text = LanguageManager.Instance.GetString("PageTitlePlayer");
+            else if (MainTabs.SelectedIndex == 2)
+                TxtActivePage.Text = LanguageManager.Instance.GetString("PageTitleSettings");
         }
 
 
@@ -242,8 +256,15 @@ namespace AudioTransfer.GUI
 
                 using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true)!)
                 {
-                    if (start) key.SetValue(appName, $"\"{appPath}\"");
-                    else key.DeleteValue(appName, false);
+                    if (start) 
+                    {
+                        string args = ViewModel.StartMinimized ? " --minimized" : "";
+                        key.SetValue(appName, $"\"{appPath}\"{args}");
+                    }
+                    else 
+                    {
+                        key.DeleteValue(appName, false);
+                    }
                 }
             }
             catch (Exception ex)
@@ -298,7 +319,7 @@ namespace AudioTransfer.GUI
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (ViewModel.MinimizeToTray)
+            if (ViewModel.MinimizeToTray && !_isForceClosing)
             {
                 e.Cancel = true;
                 WindowState = WindowState.Minimized;
@@ -324,7 +345,7 @@ namespace AudioTransfer.GUI
 
         private void ExitApplication()
         {
-            ViewModel.MinimizeToTray = false; // Bypass cancel logic
+            _isForceClosing = true;
             Close();
         }
 

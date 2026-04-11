@@ -18,6 +18,7 @@ namespace AudioTransfer.Core.Models
 
         // Startup Settings
         public bool LaunchOnStartup { get; set; } = false;
+        public bool StartMinimized { get; set; } = true;
 
         // Audio Settings
         public bool AutoMute { get; set; } = false;

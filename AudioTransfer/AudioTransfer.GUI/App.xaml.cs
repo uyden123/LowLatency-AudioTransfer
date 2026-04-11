@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
@@ -76,6 +76,21 @@ namespace AudioTransfer.GUI
             };
 
             var mainWindow = AppHost.Services.GetRequiredService<MainWindow>();
+            
+            bool startMinimized = false;
+            foreach (var arg in e.Args)
+            {
+                if (arg.Equals("--minimized", StringComparison.OrdinalIgnoreCase))
+                    startMinimized = true;
+            }
+
+            if (startMinimized)
+            {
+                mainWindow.WindowState = WindowState.Minimized;
+            }
+            
+            // Wait slightly before Show if minimized to ensure bindings establish silently
+            // Actually, WPF Show() will trigger OnStateChanged where our Hide() logic sits.
             mainWindow.Show();
         }
 

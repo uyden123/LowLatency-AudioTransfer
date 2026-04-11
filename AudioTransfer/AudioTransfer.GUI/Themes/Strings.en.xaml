@@ -55,7 +55,7 @@
     <system:String x:Key="LblNearbyServers">NEARBY SERVERS</system:String>
     <system:String x:Key="LblSearching">SEARCHING...</system:String>
     <system:String x:Key="LblRefresh">REFRESH</system:String>
-    <system:String x:Key="LblModeSelection">MODE SELECTION</system:String>
+    <system:String x:Key="LblModeSelection">OUTPUT DEVICE</system:String>
     <system:String x:Key="LblMicMode">MIC Mode</system:String>
     <system:String x:Key="LblPlayback">PLAYBACK</system:String>
     <system:String x:Key="LblRoutingHint">ROUTING HINT</system:String>
@@ -79,6 +79,7 @@
     <system:String x:Key="LblMinimizeToTrayDesc">Keep process alive</system:String>
     <system:String x:Key="LblLaunchOnStartup">Launch on Startup</system:String>
     <system:String x:Key="LblLaunchOnStartupDesc">Boot with system</system:String>
+    <system:String x:Key="LblStartMinimized">Start minimized</system:String>
     <system:String x:Key="LblSystemLogs">System Logs</system:String>
     <system:String x:Key="LblLiveTelemetry">LIVE TELEMETRY STREAM</system:String>
     <system:String x:Key="TipClearConsole">Clear Console</system:String>

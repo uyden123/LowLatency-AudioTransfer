@@ -610,8 +610,10 @@ namespace AudioTransfer.GUI.ViewModels
             OnPropertyChanged(nameof(DeviceName));
             OnPropertyChanged(nameof(AutoMute));
             OnPropertyChanged(nameof(Language));
+            OnPropertyChanged(nameof(LanguageIndex));
             OnPropertyChanged(nameof(IsDarkTheme));
             OnPropertyChanged(nameof(LaunchOnStartup));
+            OnPropertyChanged(nameof(StartMinimized));
             OnPropertyChanged(nameof(AutoConnect));
             OnPropertyChanged(nameof(MinimizeToTray));
             OnPropertyChanged(nameof(VadEnabled));
@@ -775,6 +777,21 @@ namespace AudioTransfer.GUI.ViewModels
                     Config.LaunchOnStartup = value;
                     OnPropertyChanged();
                     RequestUpdateStartup?.Invoke(this, value);
+                    if (!_isInitializing) _ = _configRepository.SaveAsync(Config);
+                }
+            }
+        }
+
+        public bool StartMinimized
+        {
+            get => Config.StartMinimized;
+            set
+            {
+                if (Config.StartMinimized != value)
+                {
+                    Config.StartMinimized = value;
+                    OnPropertyChanged();
+                    RequestUpdateStartup?.Invoke(this, LaunchOnStartup);
                     if (!_isInitializing) _ = _configRepository.SaveAsync(Config);
                 }
             }

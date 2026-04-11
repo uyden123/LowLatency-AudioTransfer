@@ -18,7 +18,6 @@ public class StoppingState : IPlayerState
         {
             CoreLogger.Instance.Log("[StoppingState] Suppressing auto-connect for 5 minutes");
             context.SuppressAutoConnect(TimeSpan.FromMinutes(5));
-            context.NotifyUser("Auto-connect suppressed for 5 minutes.", "Auto Connect");
         }
 
         CoreLogger.Instance.Log("[StoppingState] Calling PlayerEngine.Stop()");

@@ -8,6 +8,7 @@
         mc:Ignorable="d"
         Title="Ethereal Audio" Height="850" Width="1150"
         MinWidth="1050" MinHeight="800"
+        Icon="pack://application:,,,/app_icon.ico"
         Background="{DynamicResource BgBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
         WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI Variable Display, Segoe UI, Inter"
@@ -571,38 +572,6 @@
                 <TextBlock Text="|" FontSize="18" Foreground="{DynamicResource TextSecBrush}" Margin="12,0" Opacity="0.3"/>
                 <TextBlock x:Name="TxtActivePage" Text="{DynamicResource PageTitleServer}" FontSize="18" Foreground="{DynamicResource TextSecBrush}" Opacity="0.6"/>
             </StackPanel>
-            
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Ellipse Width="10" Height="10" Margin="0,0,10,0">
-                        <Ellipse.Style>
-                            <Style TargetType="Ellipse">
-                                <Setter Property="Fill" Value="{DynamicResource ToggleOffTrackColor}"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ViewModel.IsServerRunning}" Value="True">
-                                        <Setter Property="Fill" Value="{DynamicResource SuccessColor}"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Ellipse.Style>
-                    </Ellipse>
-                    <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" VerticalAlignment="Center">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Text" Value="{DynamicResource LblOffline}"/>
-                                <Setter Property="Opacity" Value="0.4"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ViewModel.IsServerRunning}" Value="True">
-                                        <Setter Property="Text" Value="{DynamicResource LblLive}"/>
-                                        <Setter Property="Opacity" Value="1"/>
-                                        <Setter Property="Foreground" Value="White"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                </StackPanel>
-            </StackPanel>
         </Grid>
 
         <!-- ═══════════════════════════════════════════════════ -->
@@ -635,7 +604,7 @@
                             <ColumnDefinition Width="24"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        
+
                         <Border Grid.Column="0" Style="{StaticResource ModernCard}" Background="{DynamicResource SurfaceContainerHighestBrush}" ClipToBounds="True">
                             <Grid>
                                 <StackPanel>
@@ -656,7 +625,7 @@
                         <Border Grid.Column="2" Style="{StaticResource ModernCard}">
                             <StackPanel>
                                 <TextBlock Text="{DynamicResource LblStreamingHealth}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" Margin="0,0,0,12"/>
-                                
+
                                 <Grid Margin="0,4,0,16">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -709,7 +678,7 @@
                                     <TextBlock Text="&#xE8D6;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{DynamicResource AccentBrush}" Margin="0,0,12,0" VerticalAlignment="Center"/>
                                     <TextBlock Text="{DynamicResource LblAudioRouting}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextSecBrush}" VerticalAlignment="Center"/>
                                 </StackPanel>
-                                
+
                                 <TextBlock Text="{DynamicResource LblSelectAudioSource}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" Margin="4,0,0,8"/>
                                 <ComboBox ItemsSource="{Binding ViewModel.CaptureDevices}" 
                                           SelectedItem="{Binding ViewModel.SelectedCaptureDevice}"
@@ -721,9 +690,9 @@
                                             <TextBlock Text="{DynamicResource LblMuteWhenStreaming}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextSecBrush}"/>
                                             <TextBlock Text="{DynamicResource LblMuteWhenStreamingDesc}" FontSize="12" Foreground="{DynamicResource TextSecBrush}"/>
                                         </StackPanel>
-                                     </Border>
-                                     <CheckBox IsChecked="{Binding ViewModel.AutoMute}" Style="{StaticResource EtherealToggle}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,24,0"/>
-                                 </Grid>
+                                    </Border>
+                                    <CheckBox IsChecked="{Binding ViewModel.AutoMute}" Style="{StaticResource EtherealToggle}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,24,0"/>
+                                </Grid>
                             </StackPanel>
                         </Border>
 
@@ -735,7 +704,7 @@
                                     <RowDefinition Height="*"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                
+
                                 <Grid Margin="0,0,0,16">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="&#xE902;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{DynamicResource SecondaryColor}" Margin="0,0,10,0"/>
@@ -784,7 +753,7 @@
                     </Grid>
 
                     <!-- Start Server Button Removed (Always On) -->
-                    <Grid Grid.Row="3" Height="48"/> 
+                    <Grid Grid.Row="3" Height="48"/>
                 </Grid>
             </TabItem>
 
@@ -839,7 +808,7 @@
                                 </Grid>
                             </StackPanel>
                         </Border>
-                        
+
 
                         <!-- Stats View (appears when connected) -->
                         <Border x:Name="StatsView" Style="{StaticResource ModernCard}" Margin="0,0,0,24" 
@@ -852,7 +821,7 @@
                                     </StackPanel>
                                     <TextBlock Text="{Binding ViewModel.ConnectTime}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource ElevatedTextBrush}" HorizontalAlignment="Right"/>
                                 </Grid>
-                                
+
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -861,71 +830,71 @@
                                         <ColumnDefinition Width="12"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    
+
                                     <Border Grid.Column="0" Background="{DynamicResource OutlineVariantColor}" CornerRadius="8" Padding="12">
                                         <StackPanel>
                                             <TextBlock Text="{DynamicResource LblBuffer}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" HorizontalAlignment="Center"/>
                                             <TextBlock Text="{Binding ViewModel.BufferDelay}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource ElevatedTextBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                                         </StackPanel>
                                     </Border>
-                                    
+
                                     <Border Grid.Column="2" Background="{DynamicResource OutlineVariantColor}" CornerRadius="8" Padding="12">
                                         <StackPanel>
                                             <TextBlock Text="{DynamicResource LblLatency}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" HorizontalAlignment="Center"/>
                                             <TextBlock Text="{Binding ViewModel.AverageLatency}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource ElevatedTextBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                                         </StackPanel>
                                     </Border>
-                                    
-                                    <Border Grid.Column="4" Background="{DynamicResource OutlineVariantColor}" CornerRadius="8" Padding="12">
-                                         <StackPanel>
-                                             <TextBlock Text="{DynamicResource LblLoss}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" HorizontalAlignment="Center"/>
-                                             <TextBlock Text="{Binding ViewModel.MaxLatency}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource ElevatedTextBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                         </StackPanel>
-                                     </Border>
-                                 </Grid>
 
-                                 <!-- VAD / Input Sensitivity Section -->
-                                 <Border Background="{DynamicResource CardOverlayBrush}" CornerRadius="12" Padding="20" Margin="0,24,0,0">
-                                     <StackPanel>
-                                         <!-- Header row -->
-                                         <Grid Margin="0,0,0,12">
-                                             <StackPanel Orientation="Horizontal">
-                                                 <TextBlock Text="&#xEFA9;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{DynamicResource AccentBrush}" Margin="0,0,12,0" VerticalAlignment="Center"/>
-                                                 <TextBlock Text="{DynamicResource LblInputSensitivity}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource ElevatedTextBrush}"/>
-                                             </StackPanel>
-                                             <CheckBox IsChecked="{Binding ViewModel.VadEnabled}" Style="{StaticResource EtherealToggle}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                         </Grid>
-                                         
-                                         <TextBlock Text="{DynamicResource LblAdjustThreshold}" FontSize="11" Foreground="{DynamicResource TextSecBrush}" Margin="0,0,0,8" Opacity="0.8"/>
-                                         
-                                         <!-- Discord-style combined slider + level meter -->
-                                         <Grid Margin="0,4,0,0">
-                                             <Grid.Style>
-                                                 <Style TargetType="Grid">
-                                                     <Style.Triggers>
-                                                         <DataTrigger Binding="{Binding ViewModel.VadEnabled}" Value="False">
-                                                             <Setter Property="Opacity" Value="0.35"/>
-                                                         </DataTrigger>
-                                                     </Style.Triggers>
-                                                 </Style>
-                                             </Grid.Style>
-                                             <Slider Style="{StaticResource DiscordVadSlider}" 
+                                    <Border Grid.Column="4" Background="{DynamicResource OutlineVariantColor}" CornerRadius="8" Padding="12">
+                                        <StackPanel>
+                                            <TextBlock Text="{DynamicResource LblLoss}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{Binding ViewModel.MaxLatency}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource ElevatedTextBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <!-- VAD / Input Sensitivity Section -->
+                                <Border Background="{DynamicResource CardOverlayBrush}" CornerRadius="12" Padding="20" Margin="0,24,0,0">
+                                    <StackPanel>
+                                        <!-- Header row -->
+                                        <Grid Margin="0,0,0,12">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xEFA9;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{DynamicResource AccentBrush}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{DynamicResource LblInputSensitivity}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource ElevatedTextBrush}"/>
+                                            </StackPanel>
+                                            <CheckBox IsChecked="{Binding ViewModel.VadEnabled}" Style="{StaticResource EtherealToggle}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                        </Grid>
+
+                                        <TextBlock Text="{DynamicResource LblAdjustThreshold}" FontSize="11" Foreground="{DynamicResource TextSecBrush}" Margin="0,0,0,8" Opacity="0.8"/>
+
+                                        <!-- Discord-style combined slider + level meter -->
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ViewModel.VadEnabled}" Value="False">
+                                                            <Setter Property="Opacity" Value="0.35"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+                                            <Slider Style="{StaticResource DiscordVadSlider}" 
                                                      Value="{Binding ViewModel.VadThreshold, UpdateSourceTrigger=PropertyChanged}" 
                                                      IsEnabled="{Binding ViewModel.VadEnabled}"
                                                      Minimum="-100" Maximum="0"
                                                      AutoToolTipPlacement="TopLeft"
                                                      AutoToolTipPrecision="0"/>
-                                         </Grid>
-                                         
-                                         <!-- Labels -->
-                                         <Grid Margin="0,2,0,0">
-                                             <TextBlock Text="{DynamicResource LblSensitive}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" Opacity="0.5"/>
-                                             <TextBlock Text="{DynamicResource LblLessSensitive}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" Opacity="0.5" HorizontalAlignment="Right"/>
-                                         </Grid>
-                                     </StackPanel>
-                                 </Border>
-                                 
-                                 <Button Content="{DynamicResource LblDisconnectSession}" 
+                                        </Grid>
+
+                                        <!-- Labels -->
+                                        <Grid Margin="0,2,0,0">
+                                            <TextBlock Text="{DynamicResource LblSensitive}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" Opacity="0.5"/>
+                                            <TextBlock Text="{DynamicResource LblLessSensitive}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" Opacity="0.5" HorizontalAlignment="Right"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Button Content="{DynamicResource LblDisconnectSession}" 
 Style="{StaticResource GhostButtonStyle}" 
                                         BorderThickness="1" Margin="0,20,0,0" Height="40"
                                         Command="{Binding ViewModel.ToggleConnectPlayerCommand}"/>
@@ -937,7 +906,7 @@ Style="{StaticResource GhostButtonStyle}"
                             <Grid>
                                 <StackPanel Orientation="Horizontal">
                                     <Border Width="32" Height="32" Background="{DynamicResource OutlineVariantColor}" CornerRadius="16" Margin="0,0,16,0">
-                                        <TextBlock Text="&#xE81C;" FontFamily="Segoe MDL2 Assets" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.8"/>
+                                        <TextBlock Text="&#xE81C;" Foreground="{DynamicResource TextPrimaryBrush}" FontFamily="Segoe MDL2 Assets" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.8"/>
                                     </Border>
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="{DynamicResource LblPersistenceEngine}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextSecBrush}"/>
@@ -957,16 +926,16 @@ Style="{StaticResource GhostButtonStyle}"
                                     <TextBlock Text="{DynamicResource LblNearbyServers}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource TextSecBrush}"/>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <TextBlock Text="{DynamicResource LblSearching}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" 
+                                    <TextBlock Text="{DynamicResource LblSearching}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" 
                                            VerticalAlignment="Center" Margin="0,0,12,0"
                                            Visibility="{Binding ViewModel.IsSearchingServers, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                <Button Command="{Binding ViewModel.RefreshServersCommand}" Style="{StaticResource GhostButtonStyle}" Padding="8,4" Height="28">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                        <TextBlock Text="{DynamicResource LblRefresh}" FontSize="11" VerticalAlignment="Center" FontWeight="Bold"/>
-                                    </StackPanel>
-                                </Button>
-                            </StackPanel>
+                                    <Button Command="{Binding ViewModel.RefreshServersCommand}" Style="{StaticResource GhostButtonStyle}" Padding="8,4" Height="28">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                            <TextBlock Text="{DynamicResource LblRefresh}" FontSize="11" VerticalAlignment="Center" FontWeight="Bold"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
                             </Grid>
 
                             <!-- Discovery Cards Grid -->
@@ -987,9 +956,8 @@ Style="{StaticResource GhostButtonStyle}"
                                                     <Border x:Name="Card" Style="{StaticResource ModernCard}" Margin="0" Padding="20">
                                                         <Grid>
                                                             <Border Width="40" Height="40" Background="{DynamicResource OutlineVariantColor}" CornerRadius="8" HorizontalAlignment="Left" VerticalAlignment="Top">
-                                                                <TextBlock Text="&#xE71D;" FontFamily="Segoe MDL2 Assets" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.8"/>
+                                                                <TextBlock Text="&#xE8EA;" Foreground="{DynamicResource TextPrimaryBrush}" FontFamily="Segoe MDL2 Assets" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.8"/>
                                                             </Border>
-                                                            <TextBlock Text="2ms" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" Opacity="0.5"/>
                                                             <StackPanel Margin="0,56,0,0">
                                                                 <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource ElevatedTextBrush}" TextTrimming="CharacterEllipsis"/>
                                                                 <TextBlock Text="{Binding IpAddress}" FontSize="13" Foreground="{DynamicResource TextSecBrush}" Margin="0,2,0,0"/>
@@ -1027,11 +995,6 @@ Style="{StaticResource GhostButtonStyle}"
                                     <TextBlock Text="{DynamicResource LblModeSelection}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource TextSecBrush}"/>
                                 </StackPanel>
 
-                                <UniformGrid Columns="2" Margin="0,0,0,20">
-                                    <RadioButton Content="{DynamicResource LblMicMode}" Style="{StaticResource GhostToggleButtonStyle}" IsChecked="True" BorderThickness="1,1,0,1"/>
-                                    <RadioButton Content="{DynamicResource LblPlayback}" Style="{StaticResource GhostToggleButtonStyle}" BorderThickness="0,1,1,1"/>
-                                </UniformGrid>
-
                                 <Border Background="{DynamicResource CardOverlayBrush}" CornerRadius="8" Padding="16">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -1051,22 +1014,6 @@ Style="{StaticResource GhostButtonStyle}"
                                 <ComboBox ItemsSource="{Binding ViewModel.OutputDevices}" 
                                           SelectedItem="{Binding ViewModel.SelectedOutputDevice}" 
                                           Style="{StaticResource EtherealComboBox}"/>
-
-                                <Grid Margin="0,32,0,0">
-                                    <TextBlock Text="{DynamicResource LblLatencyOptimization}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextSecBrush}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{DynamicResource LblUltraLow}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource SecondaryColor}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                </Grid>
-                                <Grid Height="4" Margin="0,8,0,0">
-                                    <Rectangle RadiusX="2" RadiusY="2" Fill="{DynamicResource CardOverlayBrush}"/>
-                                    <Rectangle RadiusX="2" RadiusY="2" HorizontalAlignment="Left" Width="240">
-                                        <Rectangle.Fill>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                                <GradientStop Color="{DynamicResource AccentColor}" Offset="0"/>
-                                                <GradientStop Color="{DynamicResource SecondaryColorRaw}" Offset="1"/>
-                                            </LinearGradientBrush>
-                                        </Rectangle.Fill>
-                                    </Rectangle>
-                                </Grid>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -1086,7 +1033,7 @@ Style="{StaticResource GhostButtonStyle}"
                                 <ColumnDefinition Width="24"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            
+
                             <Border Grid.Column="0" Style="{StaticResource ModernCard}">
                                 <StackPanel>
                                     <TextBlock Text="{DynamicResource LblDeviceConfig}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,16"/>
@@ -1142,8 +1089,52 @@ Style="{StaticResource GhostButtonStyle}"
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="{DynamicResource LblLaunchOnStartup}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextSecBrush}"/>
                                         <TextBlock Text="{DynamicResource LblLaunchOnStartupDesc}" FontSize="11" Foreground="{DynamicResource TextSecBrush}"/>
+                                        <Grid ClipToBounds="True">
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Opacity" Value="0"/>
+                                                    <Setter Property="MaxHeight" Value="0"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ViewModel.LaunchOnStartup}" Value="True">
+                                                            <DataTrigger.EnterActions>
+                                                                <BeginStoryboard>
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
+                                                                        <DoubleAnimation Storyboard.TargetProperty="MaxHeight" To="50" Duration="0:0:0.2">
+                                                                            <DoubleAnimation.EasingFunction>
+                                                                                <CubicEase EasingMode="EaseOut"/>
+                                                                            </DoubleAnimation.EasingFunction>
+                                                                        </DoubleAnimation>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.EnterActions>
+                                                            <DataTrigger.ExitActions>
+                                                                <BeginStoryboard>
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.15"/>
+                                                                        <DoubleAnimation Storyboard.TargetProperty="MaxHeight" To="0" Duration="0:0:0.2">
+                                                                            <DoubleAnimation.EasingFunction>
+                                                                                <CubicEase EasingMode="EaseIn"/>
+                                                                            </DoubleAnimation.EasingFunction>
+                                                                        </DoubleAnimation>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.ExitActions>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+                                            <Grid Margin="0,16,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{DynamicResource LblStartMinimized}" FontSize="12" Foreground="{DynamicResource TextSecBrush}" VerticalAlignment="Center" Opacity="0.8"/>
+                                                <CheckBox Grid.Column="1" IsChecked="{Binding ViewModel.StartMinimized}" Style="{StaticResource EtherealToggle}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Grid>
                                     </StackPanel>
-                                    <CheckBox IsChecked="{Binding ViewModel.LaunchOnStartup}" Style="{StaticResource EtherealToggle}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    <CheckBox IsChecked="{Binding ViewModel.LaunchOnStartup}" Style="{StaticResource EtherealToggle}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,0,0"/>
                                 </Grid>
                             </Border>
                         </Grid>
@@ -1158,7 +1149,7 @@ Style="{StaticResource GhostButtonStyle}"
                                 <Border Background="{DynamicResource CardOverlayBrush}" Padding="20,12">
                                     <Grid>
                                         <TextBlock Text="{DynamicResource LblLiveTelemetry}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource ElevatedTextBrush}" FontSize="11"/>
-                                        
+
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                             <Button Command="{Binding ViewModel.ClearLogsCommand}" Style="{StaticResource GhostButtonStyle}" ToolTip="{DynamicResource TipClearConsole}" Margin="4,0">
                                                 <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="12" Opacity="0.5"/>
@@ -1167,11 +1158,13 @@ Style="{StaticResource GhostButtonStyle}"
                                                 <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="12">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
-                                                            <Setter Property="Text" Value="&#xE769;"/> <!-- Pause icon -->
+                                                            <Setter Property="Text" Value="&#xE769;"/>
+                                                            <!-- Pause icon -->
                                                             <Setter Property="Opacity" Value="0.5"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding ViewModel.IsLogsPaused}" Value="True">
-                                                                    <Setter Property="Text" Value="&#xE768;"/> <!-- Play icon -->
+                                                                    <Setter Property="Text" Value="&#xE768;"/>
+                                                                    <!-- Play icon -->
                                                                     <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
                                                                     <Setter Property="Opacity" Value="1"/>
                                                                 </DataTrigger>
@@ -1189,7 +1182,7 @@ Style="{StaticResource GhostButtonStyle}"
                                         </StackPanel>
                                     </Grid>
                                 </Border>
-                                 <!-- Real-time System Logs -->
+                                <!-- Real-time System Logs -->
                                 <ItemsControl ItemsSource="{Binding ViewModel.SystemLogs}" Height="300"
                                               VirtualizingPanel.IsVirtualizing="True" 
                                               VirtualizingPanel.VirtualizationMode="Recycling">
@@ -1216,28 +1209,6 @@ Style="{StaticResource GhostButtonStyle}"
                 </ScrollViewer>
             </TabItem>
         </TabControl>
-
-        <!-- ═══════════════════════════════════════════════════ -->
-        <!-- BOTTOM STATUS BAR                                   -->
-        <!-- ═══════════════════════════════════════════════════ -->
-        <Border Grid.Row="2" Grid.ColumnSpan="2" Background="{DynamicResource StatusBarBrush}" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource StatusBarBorderBrush}">
-            <Grid Margin="12,0">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Ellipse Width="8" Height="8" Fill="{DynamicResource SuccessColor}" Margin="0,0,10,0"/>
-                    <TextBlock Text="{DynamicResource LblEngineOnline}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource NavForegroundBrush}" Opacity="0.5"/>
-                    <TextBlock Text="{DynamicResource LblSystemHealth}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource NavForegroundBrush}" Margin="24,0,0,0" Opacity="0.5"/>
-                    <TextBlock Text="{DynamicResource LblLogs}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="24,0,0,0"/>
-                    <TextBlock Text="{DynamicResource LblDiagnostics}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource NavForegroundBrush}" Margin="24,0,0,0" Opacity="0.5"/>
-                </StackPanel>
-                
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <TextBlock FontSize="10" FontWeight="Bold" Foreground="{DynamicResource NavForegroundBrush}" Opacity="0.5">
-                        <Run Text="CPU: "/><Run Foreground="{DynamicResource AccentBrush}" Text="12%"/><Run Text=" | NET: "/><Run Foreground="{DynamicResource AccentBrush}" Text="45MBPS"/>
-                    </TextBlock>
-                    <TextBlock Text="BUILD: 2.0.4-LATEST" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource NavForegroundBrush}" Margin="24,0,0,0" Opacity="0.5"/>
-                </StackPanel>
-            </Grid>
-        </Border>
 
         <!-- Notification Toast (Updated style) -->
         <Grid Grid.Column="1" Grid.RowSpan="2" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,20,0" >
