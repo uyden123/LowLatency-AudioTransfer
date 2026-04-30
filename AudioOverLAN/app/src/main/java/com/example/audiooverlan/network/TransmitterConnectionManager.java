@@ -39,7 +39,7 @@ public class TransmitterConnectionManager {
         try {
             udpSender.start();
         } catch (Exception ignored) {}
-        nsdAdvertiser.start();
+        nsdAdvertiser.start(targetPort);
     }
 
     public void stop() {

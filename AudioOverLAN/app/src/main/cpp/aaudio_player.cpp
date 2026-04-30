@@ -290,6 +290,14 @@ Java_com_example_audiooverlan_audio_AAudioPlayer_nativeWriteEncoded(
         JNIEnv* env, jobject thiz,
         jbyteArray opusData, jint length, jint frameSizeSamples, jdouble speedRatio, jboolean useFEC) {
 
+    // Quick atomic check first (no lock needed for early exit)
+    if (!gIsRunning.load(std::memory_order_acquire)) return 0;
+
+    // BUG FIX (Bluetooth disconnect crash): Hold gMutex for the entire decode + push
+    // operation. Previously this function ran without the lock, so nativeStop() could
+    // destroy gPlayer/gDecoder concurrently, causing a use-after-free crash in
+    // LockFreeRingBuffer::write() when the internal vector was already deallocated.
+    std::lock_guard<std::mutex> lock(gMutex);
     if (!gIsRunning.load() || !gPlayer || !gDecoder) return 0;
 
     int channelCount = gDecoderChannels;
@@ -373,10 +381,12 @@ Java_com_example_audiooverlan_audio_AAudioPlayer_nativeWriteEncoded(
     int totalOut = finalFramesCount * channelCount;
     int maxWaitMs = 50; // Max 50ms wait
     int waitedMs = 0;
-    while (gPlayer->getFreeSpace() < totalOut && waitedMs < maxWaitMs && gIsRunning.load()) {
+    while (gPlayer && gPlayer->getFreeSpace() < totalOut && waitedMs < maxWaitMs && gIsRunning.load()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         waitedMs++;
     }
+    // Re-check after wait (gIsRunning could have changed; gPlayer is safe since we hold gMutex)
+    if (!gIsRunning.load() || !gPlayer) return 0;
     if (waitedMs > 0 && waitedMs >= maxWaitMs) {
         LOGW("Back-pressure timeout: waited %dms, freeSpace=%d, needed=%d",
              waitedMs, gPlayer->getFreeSpace(), totalOut);
@@ -396,6 +406,10 @@ Java_com_example_audiooverlan_audio_AAudioPlayer_nativeWriteEncoded(
 JNIEXPORT jint JNICALL
 Java_com_example_audiooverlan_audio_AAudioPlayer_nativeWrite(
         JNIEnv* env, jobject thiz, jshortArray samples, jint offset, jint length) {
+    if (!gIsRunning.load(std::memory_order_acquire)) return 0;
+
+    // Same race condition fix as nativeWriteEncoded
+    std::lock_guard<std::mutex> lock(gMutex);
     if (!gIsRunning.load() || !gPlayer) return 0;
 
     if ((int)gDecodeBuffer.size() < length) gDecodeBuffer.resize(length);
@@ -422,6 +436,7 @@ Java_com_example_audiooverlan_audio_AAudioPlayer_nativeStop(JNIEnv* env, jobject
 JNIEXPORT jdouble JNICALL
 Java_com_example_audiooverlan_audio_AAudioPlayer_nativeGetLatencyMs(
         JNIEnv* env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(gMutex);
     if (!gIsRunning.load() || !gPlayer) return -1.0;
 
     auto stream = gPlayer->getStream();
@@ -437,6 +452,7 @@ Java_com_example_audiooverlan_audio_AAudioPlayer_nativeGetLatencyMs(
 JNIEXPORT jint JNICALL
 Java_com_example_audiooverlan_audio_AAudioPlayer_nativeGetBufferedFrames(
         JNIEnv* env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(gMutex);
     if (!gIsRunning.load() || !gPlayer) return 0;
     // getBufferedSamples returns total samples. Divide by channel count to get frames.
     return gPlayer->getBufferedSamples() / gPlayer->getChannelCount();
@@ -451,6 +467,7 @@ Java_com_example_audiooverlan_audio_AAudioPlayer_nativeIsAAudioSupported(
 JNIEXPORT jint JNICALL
 Java_com_example_audiooverlan_audio_AAudioPlayer_nativeGetLatestSamples(
         JNIEnv* env, jobject thiz, jshortArray outBuffer, jint maxLength) {
+    std::lock_guard<std::mutex> lock(gMutex);
     if (!gIsRunning.load() || !gPlayer) return 0;
     
     int size = gDecodeBuffer.size();
@@ -464,6 +481,7 @@ Java_com_example_audiooverlan_audio_AAudioPlayer_nativeGetLatestSamples(
 JNIEXPORT jstring JNICALL
 Java_com_example_audiooverlan_audio_AAudioPlayer_nativeGetStreamInfo(
         JNIEnv* env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(gMutex);
     if (!gIsRunning.load() || !gPlayer) {
         return env->NewStringUTF("No active stream");
     }

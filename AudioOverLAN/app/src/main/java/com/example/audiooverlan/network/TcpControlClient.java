@@ -77,7 +77,7 @@ public class TcpControlClient {
                         }
                         
                         int len = ByteBuffer.wrap(lenBuf).order(ByteOrder.LITTLE_ENDIAN).getInt();
-                        if (len <= 0 || len > 1024 * 1024) continue;
+                        if (len <= 0 || len > 1024 * 1024) throw new Exception("Invalid message length: " + len);
                         
                         byte[] jsonBuf = new byte[len];
                         int totalRead = 0;

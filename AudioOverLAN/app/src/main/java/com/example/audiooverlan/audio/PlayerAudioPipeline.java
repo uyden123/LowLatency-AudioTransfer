@@ -72,10 +72,12 @@ public class PlayerAudioPipeline {
     }
 
     public synchronized void setVolume(float volume) {
-        if (aaudioPlayer != null) {
-            aaudioPlayer.setVolume(volume);
-        } else if (audioTrack != null) {
-            audioTrack.setVolume(volume);
+        AAudioPlayer currentAAudio = aaudioPlayer;
+        android.media.AudioTrack currentTrack = audioTrack;
+        if (currentAAudio != null) {
+            currentAAudio.setVolume(volume);
+        } else if (currentTrack != null) {
+            currentTrack.setVolume(volume);
         }
     }
 
@@ -259,7 +261,8 @@ public class PlayerAudioPipeline {
         if (packetCount % 50 == 0) {
             jitterBuffer.fillStatistics(stats);
             float currentBufferMs = jitterBuffer.size() * AudioConstants.OPUS_FRAME_SIZE_MS;
-            float playbackLat = (useAAudio && aaudioPlayer != null) ? (float)aaudioPlayer.getLatencyMs() : 25.0f;
+            AAudioPlayer currentAAudio = aaudioPlayer;
+            float playbackLat = (useAAudio && currentAAudio != null) ? (float)currentAAudio.getLatencyMs() : 25.0f;
             float total = (float)currentLatencyVal + currentBufferMs + playbackLat;
 
             PlayerStateRepository.getInstance().updateState(new PlayerState.Playing(
@@ -311,8 +314,9 @@ public class PlayerAudioPipeline {
         }
 
         // Native ring buffer latency correction (proportional, centered at 25ms)
-        if (useAAudio && aaudioPlayer != null && aaudioPlayer.isStarted()) {
-            int ringFrames = aaudioPlayer.getBufferedFrames();
+        AAudioPlayer currentAAudio = aaudioPlayer;
+        if (useAAudio && currentAAudio != null && currentAAudio.isStarted()) {
+            int ringFrames = currentAAudio.getBufferedFrames();
             double ringMs = (ringFrames * 1000.0) / AudioConstants.SAMPLE_RATE;
             
             // Linear proportional: 0 correction at 25ms, positive above, negative below
@@ -466,8 +470,9 @@ public class PlayerAudioPipeline {
 
     public JitterBuffer getJitterBuffer() { return jitterBuffer; }
     public short[] getLatestSamples() { 
-        if (useAAudio && aaudioPlayer != null && aaudioPlayer.isStarted()) {
-            int copied = aaudioPlayer.getLatestSamples(pcmBufferWorkspace, pcmBufferWorkspace.length);
+        AAudioPlayer currentAAudio = aaudioPlayer;
+        if (useAAudio && currentAAudio != null && currentAAudio.isStarted()) {
+            int copied = currentAAudio.getLatestSamples(pcmBufferWorkspace, pcmBufferWorkspace.length);
             if (copied > 0) {
                 if (latestSamples == null || latestSamples.length != copied) {
                     latestSamples = new short[copied];

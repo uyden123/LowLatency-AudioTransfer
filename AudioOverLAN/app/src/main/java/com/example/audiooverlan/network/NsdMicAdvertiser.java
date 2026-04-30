@@ -33,7 +33,7 @@ public class NsdMicAdvertiser {
         this.context = context.getApplicationContext();
     }
 
-    public void start() {
+    public void start(int port) {
         if (isRegistered) {
             Log.w(TAG, "Already registered, ignoring start request");
             return;
@@ -48,6 +48,7 @@ public class NsdMicAdvertiser {
         NsdServiceInfo serviceInfo = new NsdServiceInfo();
         serviceInfo.setServiceName(SERVICE_NAME);
         serviceInfo.setServiceType(SERVICE_TYPE);
+        serviceInfo.setPort(port);
         
         // Add human-readable device name to TXT record
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
